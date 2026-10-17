@@ -1,10 +1,11 @@
 ---
 phase: "1"
 slug: "flujo-completo-del-amigo-invisible"
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: "2026-10-17"
+reviewed_at: "2026-10-17"
 ---
 
 # Phase 1 — UI Design Contract
@@ -616,15 +617,20 @@ No design system and no third-party registry is used, so the registry vetting ga
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: PASS (1 non-blocking FLAG — `Entrar` → prefer `Entrar al evento`)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved (2026-10-17) — no blocking issues; the D1 FLAG is copy polish and does not gate planning.
+
+### Non-dimensional observations carried to the planner
+
+1. **Typography allocation contradiction (lines 82 vs 321).** The Body row assigns "the recipient's name inside the Display headline" to Body (16/400), while S5 states `{Nombre}` renders at 28px/600 inside the Display headline. **Resolve toward the S5 statement** (28/600) and delete the phrase from the Body row — visual consistency degrades if resolved wrongly.
+2. **Deliberately cleared (do not re-raise):** `Field` error at 14px `red-700` is bare text on white (≈6.5:1, AA) and is *not* inconsistent with the `Notice` error surface at red-800; `max-h-[85vh]` is a viewport-relative layout constraint, not a spacing token.
 
 
 

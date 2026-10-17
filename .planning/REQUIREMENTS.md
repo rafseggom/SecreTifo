@@ -93,13 +93,42 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(pending roadmap)_ | — | — |
+| EVENT-01 | Phase 1 | Pending |
+| EVENT-02 | Phase 1 | Pending |
+| EVENT-03 | Phase 1 | Pending |
+| EVENT-04 | Phase 1 | Pending |
+| PREF-01 | Phase 1 | Pending |
+| PREF-02 | Phase 1 | Pending |
+| PREF-03 | Phase 1 | Pending |
+| PREF-04 | Phase 1 | Pending |
+| PREF-05 | Phase 1 | Pending |
+| DRAW-01 | Phase 1 | Pending |
+| DRAW-02 | Phase 1 | Pending |
+| DRAW-03 | Phase 1 | Pending |
+| DRAW-04 | Phase 1 | Pending |
+| DRAW-05 | Phase 1 | Pending |
+| ORDER-01 | Phase 1 | Pending |
+| ORDER-02 | Phase 1 | Pending |
+| ORDER-03 | Phase 1 | Pending |
+| ORDER-04 | Phase 1 | Pending |
+| ORDER-05 | Phase 1 | Pending |
+| ADMIN-01 | Phase 1 | Pending |
+| ADMIN-02 | Phase 1 | Pending |
+| ADMIN-03 | Phase 2 | Pending |
+| SEC-01 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Pending |
+| SEC-03 | Phase 2 | Pending |
+| SEC-04 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️ (to be filled by roadmapper)
+- Mapped to phases: 26 ✓
+- Unmapped: 0 ✓
+
+**By phase:**
+- Phase 1: 23 requirements (EVENT ×4, PREF ×5, DRAW ×5, ORDER ×5, ADMIN-01..02, SEC-01..02)
+- Phase 2: 3 requirements (ADMIN-03, SEC-03, SEC-04 — las garantías de privacidad cuya entrega *es* su verificación ejecutable)
 
 ---
 *Requirements defined: 2026-10-17*
-*Last updated: 2026-10-17 after initial definition*
+*Last updated: 2026-10-17 after roadmap creation (26/26 requirements mapped)*

@@ -1,7 +1,7 @@
 /**
- * Realtime reads for the lobby (DRAW-01). Ordered by `nameNormalized`, NEVER by
- * `joinedAt`: `serverTimestamp()` is null in local snapshots and would mis-sort the
- * just-joined row on that client (Pitfall 10).
+ * Realtime reads for the lobby (DRAW-01). Ordered by `nameNormalized`, NEVER by the
+ * join timestamp: `serverTimestamp()` is null in local snapshots and would mis-sort
+ * the just-joined row on that client (Pitfall 10).
  *
  * Both functions return the `onSnapshot` unsubscribe; the optional error callback
  * propagates `err.code` so the UI can apply the S8 error taxonomy (never a bare

@@ -16,11 +16,11 @@
  * A Tailwind class is never composed by filtering a colour step into the name:
  * Tailwind v4 only generates the literals it can read (01-RESEARCH §Pitfall 15).
  *
- * `loading` renders the inline 16px spinner (Task 2 swaps the local markup for
- * the shared `SpinnerIcon`), sets `aria-busy="true"` and disables the button.
- * Every `disabled` is mirrored by `aria-disabled`.
+ * `loading` renders the shared 16px `SpinnerIcon`, sets `aria-busy="true"` and
+ * disables the button. Every `disabled` is mirrored by `aria-disabled`.
  */
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { SpinnerIcon } from './icons'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 
@@ -60,12 +60,7 @@ export function Button({
       aria-busy={loading ? true : undefined}
       className={`${BASE_CLASSES} ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ''}`}
     >
-      {loading ? (
-        <span
-          aria-hidden="true"
-          className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
-        />
-      ) : null}
+      {loading ? <SpinnerIcon className="h-4 w-4" /> : null}
       {children}
     </button>
   )

@@ -1336,27 +1336,33 @@ Match the **literal** document path instead of a wildcard: `match /events/main {
 
 **Every `[ASSUMED]` claim above is a candidate for a `checkpoint:human-verify` or an in-plan verification step.** None of them blocks the phase: each has a stated, cheap fallback.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All four questions below were settled during phase planning; each carries its outcome inline as a `**Resolution**` bullet. Nothing here is still open, and no plan depends on an unresolved question.
 
 1. **How is name uniqueness actually enforced — client-side best-effort, or a `nameIndex/{nameNormalized}` document?**
    - What we know: `Transaction.get()` accepts only a `DocumentReference`, so a query cannot participate in the join transaction (`[VERIFIED: official JS API reference]`); Firestore rules cannot express uniqueness at all (rules cannot query; `[CITED: .../rules-query]`); D-02 requires "avisa y se pide otro"; D-05's participant schema has `nameNormalized` as a field and no index collection.
    - What's unclear: whether the user accepts a documented, ~200 ms TOCTOU window (recommended), or wants the race closed at the cost of adding `nameIndex/{nameNormalized}` to the schema — which is a change to a locked, one-way-reversible decision (D-05) and therefore needs explicit confirmation.
    - Recommendation: **ship the client-side pre-check + post-commit rollback** (Code Examples §joinEvent) for Phase 1, and record the residual race in the plan as an accepted limitation. Revisit only if a real collision occurs. If the user prefers the closed race, the index document is ~10 lines: `tx.get(nameIndexRef)` inside the transaction, `tx.set(nameIndexRef, { uid })`, plus a rule allowing create-if-absent — but it must be presented to the user as a D-05 amendment.
+   - **Resolution (RESOLVED).** Adopted the recommendation: pre-check + post-commit rollback, with the ~200 ms residual race declared as an accepted limitation in `01-01` (`T-01-06`, disposition `accept`) and in `01-03` (flagged assumption). No `nameIndex/` collection was added; D-05 was not amended.
 
 2. **`participantCount` — denormalised counter or derived?**
    - What we know: D-05 mandates the field on `events/main`; the lobby already subscribes to the full `participants` collection, so `participants.length` is available for free on every client.
    - What's unclear: nothing functionally — the counter is redundant. The question is only whether its presence should be authoritative anywhere.
    - Recommendation: **keep the field for schema fidelity (D-05 is locked) but treat `participants.length` as the source of truth in the UI**, and never write a UI number from the counter. If the counter is used at all, keep it written inside the join transaction (as shown) so it cannot drift badly.
+   - **Resolution (RESOLVED).** Kept exactly as recommended: `participantCount` is written inside the join transaction for schema fidelity (`01-01`), and the UI counts the `participants` snapshot it already subscribes to (`01-04`'s count line and the Admin progress of `01-06` are derived from `participants.length` / `hasOrder`, never from the counter).
 
 3. **Does the vendedor want the `Precio` column after all?**
    - What we know: D-20 explicitly lists seven columns and excludes price; `.planning/research/ARCHITECTURE.md`'s sketch includes `Precio`. CONTEXT.md wins, so Phase 1 ships seven columns.
    - What's unclear: whether the omission was deliberate (keep the export to order facts) or an oversight when D-20 was written.
    - Recommendation: **follow D-20 (seven columns, no price)**. The prices are visible in the order UI (D-17). Raise it with the user as a one-line confirmation, not as a blocker — adding a column later is a two-line change plus a test update.
+   - **Resolution (RESOLVED).** D-20 sets CONTEXT.md's seven columns with no `Precio` column; `.planning/research/ARCHITECTURE.md`'s sketch (which includes it) is overridden. `01-02` fixes `EXPORT_HEADERS` at exactly seven literals with a test asserting the length, `01-06` composes the file from them, and the prices stay visible in the order screen (D-17).
 
 4. **Should the rules match the literal `/events/main` instead of `/events/{eventId}`?**
    - What we know: D-04 fixes a single event with the literal document id `main`; the wildcard form admits ids that can never legitimately exist, and forces `list` to be reasoned about.
    - What's unclear: nothing substantive — this is a strict tightening.
    - Recommendation: **adopt the literal path** and drop `list` from the `events` rule. Low-risk, improves readability of every nested rule.
+   - **Resolution (RESOLVED).** Adopted: `firestore.rules` (written in `01-01`) matches the literal `/events/main` with no `list` on `events`, and the nested `participants`/`assignments`/`orders` blocks hang off that literal path.
 
 ## Sources
 

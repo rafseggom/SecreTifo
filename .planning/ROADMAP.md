@@ -22,6 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Flujo completo del amigo invisible
+
 **Goal**: Entregar el recorrido completo y funcionando — entrar con el nombre, declarar preferencias con la Guía de Tallas, ver el lobby sincronizado, sortear de forma circular y privada, descubrir el destinatario, registrar el pedido y exportar los pedidos desde el Admin — con el modelo de datos privado y las reglas de Firestore escritas desde el primer commit, no al final.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
@@ -32,7 +33,26 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Al unirse, cada participante elige su talla (S, M, L, XL, XXL, XXXL), declara equipos preferidos y equipos prohibidos en texto, y abre el botón/modal "Guía de Tallas" para ver las tablas Fan y Player con los datos literales del spec (incluida la nota de que Retro usa la tabla Fan).
   4. Tras el sorteo, cada participante ve "Te ha tocado regalar a [Nombre]" junto a las preferencias de esa persona y registra su pedido (Tipo Fan/Player/Retro, Equipo, Temporada/Año, Nombre a serigrafiar, Dorsal) viendo los precios de referencia (Fan 11$, Player 16$, Retro 15$); nadie se regala a sí mismo y nadie ve un emparejamiento que no sea el suyo.
   5. El Admin ve cuántos participantes han rellenado su pedido y cuántos faltan, y descarga un .csv UTF-8 con BOM y separador `;` con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin ninguna columna ni campo que revele quién regala a quién.
-**Plans**: TBD
+
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+- [ ] 01-01-PLAN.md — Walking skeleton: stack completo, contrato de datos y reglas, identidad anónima y el primer ciclo real nombre → unión → sala de espera en vivo
+- [ ] 01-04-PLAN.md — Sala de espera completa y sorteo transaccional idempotente con un documento por regalador
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 01-02-PLAN.md — Dominio puro test-first: normalizador, sorteo circular, datos literales de tallas y precios, y la exportación sin campo de emparejamiento
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 01-03-PLAN.md — Preferencias y Guía de Tallas: primitivas de componente, modal con las tablas literales y las dos pantallas de entrada y unión
+
+**Wave 5** *(blocked on Wave 3 completion)*
+- [ ] 01-05-PLAN.md — Revelación con las preferencias del destinatario y formulario de pedido idempotente con precios de referencia
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 01-06-PLAN.md — Panel del Admin: progreso derivado, pendientes y descarga del CSV sin quién regala a quién
+
 **UI hint**: yes
 
 **Sub-steps (el orden de construcción de 7 pasos de la investigación, comprimido dentro de esta única fase):**
@@ -45,6 +65,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   7. **Admin y exportación** — `useOrdersAdmin` montado solo en la ruta de Admin; contador de progreso; `buildOrdersExport(orders)` escrito test-first, cuyo contrato no admite ningún parámetro capaz de transportar el emparejamiento; `exportOrders` + `download` (Blob, BOM, `;`, ID de pedido opaco).
 
 ### Phase 2: Privacidad verificada y pulido
+
 **Goal**: Convertir la promesa central del producto en evidencia ejecutable — demostrar contra el Emulator Suite que las reglas hacen ilegible el emparejamiento incluso para el Admin, verificar por fixture que el artefacto de exportación no permite reconstruirlo, y pulir los estados y la ergonomía móvil que el uso real exige.
 **Mode:** mvp
 **Depends on**: Phase 1
@@ -55,6 +76,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Ninguna ruta muestra una pantalla vacía antes de la primera respuesta del servidor: todas exponen estados explícitos de carga, vacío y error, incluidos `permission-denied`, sin conexión y cuota agotada.
   4. La "Guía de Tallas" es usable en móvil (tarjeta por talla por debajo de `sm`, diálogo desplazable con altura acotada) y cualquier deep-link (`/lobby`, `/reveal`, `/admin`) sobrevive a una recarga gracias al rewrite catch-all del hosting.
   5. El README declara el contrato de confianza: qué privacidad está garantizada entre participantes, que el emparejamiento nunca se persiste como un único documento, y que el dueño del proyecto Firebase sí puede leer Firestore por consola — límite aceptado conscientemente, no descuido.
+
 **Plans**: TBD
 **UI hint**: yes
 
@@ -65,5 +87,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Flujo completo del amigo invisible | 0/TBD | Not started | - |
+| 1. Flujo completo del amigo invisible | 0/6 | Planned | - |
 | 2. Privacidad verificada y pulido | 0/TBD | Not started | - |

@@ -39,7 +39,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 - [ ] 01-01-PLAN.md — Walking skeleton: stack completo, contrato de datos y reglas, identidad anónima y el primer ciclo real nombre → unión → sala de espera en vivo
-- [ ] 01-04-PLAN.md — Sala de espera completa y sorteo transaccional idempotente con un documento por regalador
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Dominio puro test-first: normalizador, sorteo circular, datos literales de tallas y precios, y la exportación sin campo de emparejamiento
@@ -47,7 +46,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-03-PLAN.md — Preferencias y Guía de Tallas: primitivas de componente, modal con las tablas literales y las dos pantallas de entrada y unión
 
-**Wave 5** *(blocked on Wave 3 completion)*
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 01-04-PLAN.md — Sala de espera completa y sorteo transaccional idempotente con un documento por regalador
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01-05-PLAN.md — Revelación con las preferencias del destinatario y formulario de pedido idempotente con precios de referencia
 
 **Wave 6** *(blocked on Wave 5 completion)*

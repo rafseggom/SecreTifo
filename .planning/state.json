@@ -1,0 +1,23 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Flujo completo del amigo invisible",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "Privacidad verificada y pulido",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 01 of 2 · 0% · executing"
+  },
+  "updated_at": "2026-10-18T12:48:10.299Z"
+}

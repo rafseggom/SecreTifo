@@ -47,7 +47,7 @@ Requirements for the initial release. Each maps to a roadmap phase.
 ### Privacidad y Verificación (SEC)
 
 - [ ] **SEC-01**: El mapa completo regalador→destinatario nunca se persiste en un único documento
-- [ ] **SEC-02**: La exportación se construye con una función pura cuyo contrato no puede recibir el emparejamiento (garantía estructural)
+- [x] **SEC-02**: La exportación se construye con una función pura cuyo contrato no puede recibir el emparejamiento (garantía estructural)
 - [ ] **SEC-03**: Las reglas de Firestore deniegan `list` sobre las asignaciones y permiten `get` solo al propio regalador (probado contra el emulador)
 - [ ] **SEC-04**: La exportación usa un identificador de pedido opaco y no incluye la identidad de los participantes, de modo que no se pueda inferir el emparejamiento cruzando talla+equipo con las preferencias públicas
 
@@ -116,7 +116,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-02 | Phase 1 | Pending |
 | ADMIN-03 | Phase 2 | Pending |
 | SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Complete |
 | SEC-03 | Phase 2 | Pending |
 | SEC-04 | Phase 2 | Pending |
 

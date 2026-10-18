@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Flujo completo del amigo invisible
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-18T13:21:49.451Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-10-18T13:31:41.561Z"
 last_activity: 2026-10-18
 last_activity_desc: Phase 01 execution started
-state_head: 763da877c598e2950e78af18d0a122b807ff873f
+state_head: 65c289d599874f92749982b008f6cf2dc3688cd0
 progress:
   total_phases: 2
   completed_phases: 0
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 ## Current Position
 
 Phase: 01 (Flujo completo del amigo invisible) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-18 — Phase 01 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 23min | 5 tasks | 36 files |
+| Phase 01 P02 | 6min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,11 @@ Recent decisions affecting current work:
 - [Phase 01]: joinEvent hace el pre-chequeo de nombre duplicado FUERA de la transaccion (Transaction.get() no acepta Query), con rollback deleteDoc propio para cerrar la ventana TOCTOU; nunca auto-sufija el nombre
 - [Phase 01]: El lobby ordena por nameNormalized y nunca por la marca de union, que es null en la instantanea local y descolocaria la fila recien unida (Pitfall 10)
 - [Phase 01]: role se deriva de event.adminUid === uid en SessionProvider (se calcula, no se almacena) y la forma de useSession() queda congelada para 01-03/01-04
+- [Phase 01]: D-13 literal spec data fixed by test, including Player's 2XL maximum and the repeated 70-78 weight range of M and L: the provider's anomalies are exposed as two non-blocking predicates (isSizeUnavailableForKit, hasAmbiguousWeight), never corrected (D-12, D-16).
+- [Phase 01]: Retro has no size table of its own: RETRO_USES_FAN_TABLE = true declares it explicitly instead of letting a consumer infer it.
+- [Phase 01]: buildDerangement is Fisher-Yates over a copy plus a +1 offset with exactly one randomness source: bijection, zero fixed points and a single cycle for n >= 3 by construction; it throws below 3 and never mutates the caller's array (D-08, DRAW-03, DRAW-04).
+- [Phase 01]: buildOrdersExport's parameter type (ExportedOrder, declared once in domain/types.ts) has no identity or pairing field and the module imports nothing from src/lib/, so SEC-02 is enforced by the compiler; the formula neutralisation in escapeCsvCell is Assumption A2, a plan decision, reversible in one line.
+- [Phase 01]: normalizeName needed no change: 01-01 already shipped trim + internal-whitespace collapse + lowercase. Its contract is pinned by test and its declared limit is that accents are NOT folded ('Jose' and 'Jose' with accent are distinct keys).
 
 ### Pending Todos
 
@@ -99,6 +105,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-18T13:21:49.412Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-18T13:31:41.518Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None

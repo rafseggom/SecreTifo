@@ -9,9 +9,9 @@ Requirements for the initial release. Each maps to a roadmap phase.
 
 ### Identidad y Evento (EVENT)
 
-- [ ] **EVENT-01**: El usuario entra indicando solo su nombre (sin contraseña) y su identidad persiste entre recargas del navegador
-- [ ] **EVENT-02**: El primer usuario que crea el Evento se convierte en Admin; los usuarios siguientes se unen al mismo evento
-- [ ] **EVENT-03**: La app usa Firebase Anonymous Auth de forma silenciosa (sin pantalla de login) para que las reglas de Firestore puedan identificar a cada participante
+- [x] **EVENT-01**: El usuario entra indicando solo su nombre (sin contraseña) y su identidad persiste entre recargas del navegador
+- [x] **EVENT-02**: El primer usuario que crea el Evento se convierte en Admin; los usuarios siguientes se unen al mismo evento
+- [x] **EVENT-03**: La app usa Firebase Anonymous Auth de forma silenciosa (sin pantalla de login) para que las reglas de Firestore puedan identificar a cada participante
 - [ ] **EVENT-04**: El sistema evita nombres de participante duplicados o ambiguos dentro del evento (normaliza y avisa/rechaza duplicados)
 
 ### Preferencias y Guía de Tallas (PREF)
@@ -93,9 +93,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EVENT-01 | Phase 1 | Pending |
-| EVENT-02 | Phase 1 | Pending |
-| EVENT-03 | Phase 1 | Pending |
+| EVENT-01 | Phase 1 | Complete |
+| EVENT-02 | Phase 1 | Complete |
+| EVENT-03 | Phase 1 | Complete |
 | EVENT-04 | Phase 1 | Pending |
 | PREF-01 | Phase 1 | Pending |
 | PREF-02 | Phase 1 | Pending |

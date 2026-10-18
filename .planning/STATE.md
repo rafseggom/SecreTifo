@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Flujo completo del amigo invisible
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-10-18T12:53:24.270Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-10-18T13:21:49.451Z"
 last_activity: 2026-10-18
 last_activity_desc: Phase 01 execution started
-state_head: ea6cc25aa977e464116657814b23ba7901bce29f
+state_head: 763da877c598e2950e78af18d0a122b807ff873f
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 ## Current Position
 
 Phase: 01 (Flujo completo del amigo invisible) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 01
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-10-18 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -52,6 +52,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 23min | 5 tasks | 36 files |
 
 ## Accumulated Context
 
@@ -66,6 +71,10 @@ Recent decisions affecting current work:
 - [Phase 1] `buildOrdersExport(orders)` no acepta ningún parámetro capaz de transportar el emparejamiento: la política queda como garantía de tipos.
 - [Phase 1] Las reglas se escriben en la Fase 1 junto al esquema (no al final) y se verifican en la Fase 2.
 - [Phase 2] Se acepta y documenta que el dueño del proyecto Firebase puede leer Firestore por consola/Admin SDK; la Cloud Function que haría el sorteo ciego real queda aparcada como no-entregable v1.
+- [Phase 01]: Reglas y contrato de datos (types.ts) se escriben en el primer plan junto al esquema: D-05/D-06 son one-way y reescribirlos despues obligaria a migrar participants/assignments/orders
+- [Phase 01]: joinEvent hace el pre-chequeo de nombre duplicado FUERA de la transaccion (Transaction.get() no acepta Query), con rollback deleteDoc propio para cerrar la ventana TOCTOU; nunca auto-sufija el nombre
+- [Phase 01]: El lobby ordena por nameNormalized y nunca por la marca de union, que es null en la instantanea local y descolocaria la fila recien unida (Pitfall 10)
+- [Phase 01]: role se deriva de event.adminUid === uid en SessionProvider (se calcula, no se almacena) y la forma de useSession() queda congelada para 01-03/01-04
 
 ### Pending Todos
 
@@ -90,6 +99,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-17T15:45:50.983Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: E:/Proyectos Github/SecreTifo/.planning/phases/01-flujo-completo-del-amigo-invisible/01-UI-SPEC.md
+Last session: 2026-10-18T13:21:49.412Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None

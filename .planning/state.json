@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Flujo completo del amigo invisible",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "2",
@@ -15,9 +15,9 @@
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
+    "command": "/gsd-progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 01 of 2 · 0% · executing"
+    "reason": "Phase 1 of 2 · 0% · executing"
   },
-  "updated_at": "2026-10-18T12:53:24.342Z"
+  "updated_at": "2026-10-18T13:21:33.713Z"
 }

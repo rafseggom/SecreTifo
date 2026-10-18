@@ -34,11 +34,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Tras el sorteo, cada participante ve "Te ha tocado regalar a [Nombre]" junto a las preferencias de esa persona y registra su pedido (Tipo Fan/Player/Retro, Equipo, Temporada/Año, Nombre a serigrafiar, Dorsal) viendo los precios de referencia (Fan 11$, Player 16$, Retro 15$); nadie se regala a sí mismo y nadie ve un emparejamiento que no sea el suyo.
   5. El Admin ve cuántos participantes han rellenado su pedido y cuántos faltan, y descarga un .csv UTF-8 con BOM y separador `;` con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin ninguna columna ni campo que revele quién regala a quién.
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Walking skeleton: stack completo, contrato de datos y reglas, identidad anónima y el primer ciclo real nombre → unión → sala de espera en vivo
+- [x] 01-01-PLAN.md — Walking skeleton: stack completo, contrato de datos y reglas, identidad anónima y el primer ciclo real nombre → unión → sala de espera en vivo
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Dominio puro test-first: normalizador, sorteo circular, datos literales de tallas y precios, y la exportación sin campo de emparejamiento
@@ -89,5 +89,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Flujo completo del amigo invisible | 0/6 | Planned | - |
+| 1. Flujo completo del amigo invisible | 1/6 | In Progress | - |
 | 2. Privacidad verificada y pulido | 0/TBD | Not started | - |

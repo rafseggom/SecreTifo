@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// SecretKit Firestore Security Rules — DEFAULT DENY (D-06, SEC-01).
+// Written alongside the schema in the same commit, not at the end.
+// Every rule below is conditional; anything not matched here is denied.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Costs one document read per evaluation (Pitfall 19). Accepted at this scale.
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/events/main).data.adminUid == request.auth.uid;
+    }
+
+    // events/main — a single fixed document; the id is literally "main" (D-04).
+    // A wildcard would admit documents that can never legitimately exist.
+    match /events/main {
+      allow get: if isSignedIn();
+      // No `list`: nothing should be able to enumerate events.
+
+      // Bootstrap: the FIRST user creates events/main and becomes Admin (D-02, EVENT-02).
+      allow create: if isSignedIn()
+        && request.resource.data.adminUid == request.auth.uid
+        && request.resource.data.status == 'lobby';
+
+      // Write-once adminUid: the create above sets it; this guard is what makes it
+      // immutable afterwards. Only the Admin may flip status lobby -> drawn (Pitfall 12).
+      allow update: if isAdmin()
+        && request.resource.data.adminUid == resource.data.adminUid;
+
+      allow delete: if false;
+
+      // participants — PUBLIC WITHIN THE EVENT, BY DESIGN.
+      // PREF-05 requires the giver to read the recipient's preferences and DRAW-01 needs
+      // a live list, which is why the EXPORT must be anonymous (SEC-04). Do not "tighten"
+      // this to per-document get: it breaks the lobby and the duplicate-name pre-check (Pitfall 9).
+      match /participants/{uid} {
+        allow get, list: if isSignedIn();
+
+        allow create, update: if isSignedIn()
+          && uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.nameNormalized is string
+          && request.resource.data.size in ['S','M','L','XL','XXL','XXXL'];
+        // NOTE: uniqueness of nameNormalized CANNOT be expressed in rules — rules cannot
+        // query. Enforced client-side, best-effort (Pitfall 3, Open Question 1).
+
+        allow delete: if isSignedIn() && uid == request.auth.uid; // needed by the post-commit collision rollback
+      }
+
+      // assignments — the pairing lives here, one document per giver, and NOWHERE else
+      // (D-07, SEC-01). No document anywhere ever holds the full map.
+      match /assignments/{giverUid} {
+        // A participant may read ONLY their own assignment, by document id.
+        allow get: if isSignedIn() && giverUid == request.auth.uid;
+        // NOBODY may query the collection — not other participants, not the Admin (D-06).
+        // A getDocs() here fails with permission-denied for everyone (Pitfall 4).
+        allow list: if false;
+        // Only the draw transaction writes assignments, and only the Admin runs it (D-09).
+        allow create, update: if isAdmin();
+        allow delete: if false;
+      }
+
+      // orders — own-or-Admin read; own write; never carries the pairing (D-06, D-18).
+      match /orders/{giverUid} {
+        allow get: if isSignedIn() && (giverUid == request.auth.uid || isAdmin());
+        allow list: if isAdmin();
+
+        allow create, update: if isSignedIn()
+          && giverUid == request.auth.uid
+          // D-15: Dorsal is a STRING (preserves leading zeros) — not an int.
+          && request.resource.data.number is string
+          // ORDER-04 / SEC: the order document must not reveal the pairing. Forbid any
+          // recipient-bearing field outright, using the documented forbid-a-field pattern.
+          && !('recipientUid' in request.resource.data)
+          && !('recipientName' in request.resource.data);
+
+        allow delete: if false;
+      }
+    }
+  }
+}

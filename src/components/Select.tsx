@@ -15,6 +15,12 @@ import { SIZES } from '../domain/sizeGuide'
 type SelectProps = ComponentPropsWithRef<'select'> & {
   /** Options come from a domain module; never a literal list inside the markup. */
   options?: readonly string[]
+  /**
+   * Optional visible label per option, keyed by its value. The `value` stays
+   * verbatim (the enum member) while the label may carry extra context — D-17 needs
+   * the type option to read `Fan · 11$` without the stored value becoming that string.
+   */
+  optionLabels?: Partial<Record<string, string>>
   placeholder: string
   invalid?: boolean
 }
@@ -24,6 +30,7 @@ const SELECT_CLASSES =
 
 export function Select({
   options = SIZES,
+  optionLabels,
   placeholder,
   invalid = false,
   className,
@@ -40,7 +47,7 @@ export function Select({
       </option>
       {options.map((option) => (
         <option key={option} value={option}>
-          {option}
+          {optionLabels?.[option] ?? option}
         </option>
       ))}
     </select>

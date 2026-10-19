@@ -33,15 +33,21 @@ const TONE_CLASSES: Record<NoticeTone, string> = {
 
 type NoticeProps = {
   tone: NoticeTone
+  /**
+   * The live-region role. `status` is the phase default and the only value allowed:
+   * the alert live region lives exclusively in `Field`. Call-sites that must be
+   * explicit about the role (the D-16 order notice) pass it verbatim.
+   */
+  role?: 'status'
   /** Optional recovery affordance, e.g. the `Reintentar` button. */
   action?: ReactNode
   children: ReactNode
 }
 
-export function Notice({ tone, action, children }: NoticeProps) {
+export function Notice({ tone, role = 'status', action, children }: NoticeProps) {
   return (
     <div
-      role="status"
+      role={role}
       className={`flex flex-col gap-2 rounded-lg border px-4 py-3 text-label ${TONE_CLASSES[tone]}`}
     >
       <p>{children}</p>

@@ -8,7 +8,7 @@
  * The rules under test are in firestore.rules (source of truth). This test
  * file must be run via `npm run test:rules` which starts the Firestore Emulator.
  */
-import { describe, it, expect, beforeAll, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach } from 'vitest'
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -38,19 +38,23 @@ afterEach(async () => {
 
 /**
  * Helper to create the events/main document with the admin UID and status.
- * This is required for most rules that check `isAdmin()`.
- * Uses security-rules-disabled context for seeding.
+ * Uses the admin authenticated context (following rules) to ensure
+ * cross-document reads in rules can see the document.
+ * For 'drawn' status, creates as 'lobby' then updates (forward-only transition).
  */
 async function seedEventMain(status: 'lobby' | 'drawn' = 'lobby'): Promise<void> {
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore()
-    await setDoc(doc(db, 'events', 'main'), { adminUid: ADMIN_UID, status })
-  })
+  const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
+  const eventRef = doc(adminDb, 'events', 'main')
+  await setDoc(eventRef, { adminUid: ADMIN_UID, status: 'lobby' })
+  if (status === 'drawn') {
+    await updateDoc(eventRef, { status: 'drawn' })
+  }
 }
 
 /**
  * Helper to create a participant document.
- * Uses security-rules-disabled context for seeding.
+ * Uses security-rules-disabled context for seeding (participant create rule
+ * requires lobby status which we ensure via seedEventMain).
  */
 async function seedParticipant(uid: string, overrides: Record<string, unknown> = {}): Promise<void> {
   await testEnv.withSecurityRulesDisabled(async (context) => {
@@ -163,29 +167,6 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     const ordersCol = collection(participantDb, 'orders')
 
     await assertFails(getDocs(ordersCol))
-  })
-
-  // Debug: verify participant context can read events/main (isSignedIn check)
-  it('allows participant to read events/main', async () => {
-    await seedEventMain('lobby')
-
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
-    const eventRef = doc(participantDb, 'events', 'main')
-
-    await assertSucceeds(getDoc(eventRef))
-  })
-
-  // Debug: verify events/main has correct status field
-  it('events/main has status lobby when seeded', async () => {
-    await seedEventMain('lobby')
-
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
-    const eventRef = doc(participantDb, 'events', 'main')
-    const snap = await getDoc(eventRef)
-
-    expect(snap.exists()).toBe(true)
-    expect(snap.data()?.status).toBe('lobby')
-    expect(snap.data()?.adminUid).toBe(ADMIN_UID)
   })
 
   // 7. create participant only in lobby, own UID

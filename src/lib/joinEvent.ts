@@ -18,6 +18,35 @@ import type { Role, Size } from '../domain/types'
 
 export type JoinResult = { role: Role }
 
+/**
+ * The three error copies the UI renders, exported so the copy shown and the error
+ * thrown cannot drift apart (01-UI-SPEC §Copywriting Contract reuses exactly these
+ * three literals). `src/pages/EntryPage.tsx` and the preferences form consume them
+ * rather than re-spelling them.
+ */
+export const ERR_NAME_TAKEN = 'Ese nombre ya está en uso en el evento. Prueba con otro.'
+export const ERR_NAME_RACE = 'Ese nombre acaba de ser usado por otra persona. Prueba con otro.'
+export const ERR_EVENT_CLOSED = 'El sorteo ya se ha realizado: el grupo está cerrado.'
+
+/**
+ * The duplicate-name pre-check, shared by S1's form and this file's step 1 so the
+ * two can never diverge. It is the step-1 query exactly: one document matching the
+ * NORMALISED name, `limit(1)`. The comparison is always on the normalised form —
+ * never the original text — and accents are NOT folded (the contract's stated
+ * limit). Permitted outside a transaction because the rules allow `list` on
+ * participants.
+ */
+export async function isNameTaken(name: string): Promise<boolean> {
+  const dupe = await firestore.getDocs(
+    firestore.query(
+      firestore.collection(db, 'events', 'main', 'participants'),
+      firestore.where('nameNormalized', '==', normalizeName(name)),
+      firestore.limit(1),
+    ),
+  )
+  return !dupe.empty
+}
+
 export async function joinEvent(
   uid: string,
   name: string,
@@ -25,17 +54,10 @@ export async function joinEvent(
 ): Promise<JoinResult> {
   const nameNormalized = normalizeName(name)
 
-  // ── Step 1: duplicate-name pre-check, OUTSIDE the transaction.
-  // Permitted because the rules allow `list` on participants.
-  const dupe = await firestore.getDocs(
-    firestore.query(
-      firestore.collection(db, 'events', 'main', 'participants'),
-      firestore.where('nameNormalized', '==', nameNormalized),
-      firestore.limit(1),
-    ),
-  )
-  if (!dupe.empty) {
-    throw new Error('Ese nombre ya está en uso en el evento. Prueba con otro.')
+  // ── Step 1: duplicate-name pre-check, OUTSIDE the transaction, through the
+  // shared helper. Permitted because the rules allow `list` on participants.
+  if (await isNameTaken(name)) {
+    throw new Error(ERR_NAME_TAKEN)
   }
 
   const eventRef = firestore.doc(db, 'events/main')
@@ -49,7 +71,7 @@ export async function joinEvent(
 
     if (eventSnap.exists() && eventSnap.data().status === 'drawn') {
       // D-10: the roster is frozen once the draw has run.
-      throw new Error('El sorteo ya se ha realizado: el grupo está cerrado.')
+      throw new Error(ERR_EVENT_CLOSED)
     }
 
     const isFirstUser = !eventSnap.exists()
@@ -90,7 +112,7 @@ export async function joinEvent(
   )
   if (after.size > 1) {
     await firestore.deleteDoc(meRef)
-    throw new Error('Ese nombre acaba de ser usado por otra persona. Prueba con otro.')
+    throw new Error(ERR_NAME_RACE)
   }
 
   return { role }

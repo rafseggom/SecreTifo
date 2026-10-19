@@ -1,29 +1,34 @@
 /**
- * S2, thin version (01-01 Task 5). The required size plus the optional team
- * preferences, and the actual join through `joinEvent`.
+ * S2 — Preferencias (01-UI-SPEC §S2).
  *
- * The pending name comes from the identity stored by S1 (`loadIdentity()`); the
- * session's own `name` is the fallback for a participant whose document already
- * exists on another device. 01-03 replaces this file with the full S2 (identity
- * recap, size-guide trigger, the four distinguishable failure copies and the
- * shared `isNameTaken` pre-check).
+ * The one screen that creates the participant document, and therefore the only
+ * place the size is required: the `create` rule asserts the size enum, so a
+ * participant without a size is impossible by construction.
+ *
+ * The size options come from `SIZES` (`src/domain/sizeGuide.ts`) through `Select`
+ * — no option list is written in this file. The two team fields are optional free
+ * text: they are stored literally (an empty field is the empty string, never
+ * `null`/`undefined`), they are never parsed as a delimited list, and they are
+ * rendered wrapped wherever they appear.
+ *
+ * The four distinguishable failures render in the form's error slot with the
+ * fields still editable. The three thrown copies are consumed as the constants
+ * `joinEvent.ts` exports, so the copy shown and the error thrown cannot drift.
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
+import { Field } from '../components/Field'
+import { Input } from '../components/Input'
+import { Select } from '../components/Select'
+import { Button } from '../components/Button'
+import { Notice } from '../components/Notice'
+import { SizeGuideModal } from '../components/SizeGuideModal'
 import { useSession } from '../session/SessionProvider'
-import { loadIdentity } from '../lib/session'
-import { joinEvent } from '../lib/joinEvent'
+import { clearIdentity, loadIdentity } from '../lib/session'
+import { ERR_EVENT_CLOSED, ERR_NAME_RACE, ERR_NAME_TAKEN, joinEvent } from '../lib/joinEvent'
 import type { Size } from '../domain/types'
-
-/**
- * The size enum offered to participants. 01-02 supersedes this with the single
- * source of truth in `src/domain/sizeGuide.ts` (`SIZES`) when the size-guide
- * tables land; until then the list lives here so this screen has no hand-written
- * option literal inside its markup.
- */
-const SIZES: readonly Size[] = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 
 export default function PreferencesPage() {
   const navigate = useNavigate()
@@ -35,110 +40,144 @@ export default function PreferencesPage() {
   const [size, setSize] = useState<Size | ''>('')
   const [likedTeams, setLikedTeams] = useState('')
   const [forbiddenTeams, setForbiddenTeams] = useState('')
-  const [error, setError] = useState('')
+  const [sizeError, setSizeError] = useState('')
+  const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const selectRef = useRef<HTMLSelectElement>(null)
+
+  function handleChangeName() {
+    clearIdentity()
+    navigate('/')
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     // Never disabled for validation: pressing the CTA is what reveals the error.
     if (!size) {
-      setError('Elige tu talla para continuar.')
+      setFormError('')
+      setSizeError('Elige tu talla para continuar.')
       selectRef.current?.focus()
       return
     }
 
     if (!uid) return
 
-    setError('')
+    setSizeError('')
+    setFormError('')
     setSubmitting(true)
 
     try {
       await joinEvent(uid, name, { size, likedTeams, forbiddenTeams })
       navigate('/lobby')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No hemos podido unirte al evento.')
+      const message = cause instanceof Error ? cause.message : ''
+      const known =
+        message === ERR_NAME_TAKEN || message === ERR_NAME_RACE || message === ERR_EVENT_CLOSED
+      setFormError(known ? message : 'No hemos podido unirte al evento.')
       setSubmitting(false)
     }
   }
 
   return (
-    <Screen title="Tus preferencias">
+    <Screen title="Tus preferencias" stickyCta>
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-slate-600">
+        <span className="break-words">Entrarás como {name}</span>
+        <Button type="button" variant="ghost" onClick={handleChangeName}>
+          Cambiar nombre
+        </Button>
+      </p>
+
       <Card className="mt-6">
-        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="talla" className="text-label text-slate-900">
-              Tu talla
-            </label>
-            <select
-              id="talla"
-              ref={selectRef}
-              value={size}
-              onChange={(event) => setSize(event.target.value as Size | '')}
-              aria-invalid={error ? true : undefined}
-              aria-describedby={error ? 'form-error' : undefined}
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
-            >
-              <option value="" disabled>
-                Elige una talla
-              </option>
-              {SIZES.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+        <form id="prefs-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+          <Field label="Tu talla" required error={sizeError || undefined}>
+            {({ id, describedBy, invalid }) => (
+              <Select
+                id={id}
+                ref={selectRef}
+                placeholder="Elige una talla"
+                value={size}
+                onChange={(event) => setSize(event.target.value as Size | '')}
+                aria-describedby={describedBy}
+                invalid={invalid}
+              />
+            )}
+          </Field>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="equipos-gustan" className="text-label text-slate-900">
-              Equipos que te gustan
-            </label>
-            <input
-              id="equipos-gustan"
-              type="text"
-              maxLength={200}
-              value={likedTeams}
-              onChange={(event) => setLikedTeams(event.target.value)}
-              aria-describedby="equipos-gustan-helper"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
-            />
-            <p id="equipos-gustan-helper" className="text-label text-slate-600">
-              Opcional. Escríbelos separados por comas.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="equipos-prohibidos" className="text-label text-slate-900">
-              Equipos que NO quieres
-            </label>
-            <input
-              id="equipos-prohibidos"
-              type="text"
-              maxLength={200}
-              value={forbiddenTeams}
-              onChange={(event) => setForbiddenTeams(event.target.value)}
-              className="h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
-            />
-          </div>
-
-          {error ? (
-            <p id="form-error" role="alert" className="text-label text-red-700">
-              {error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            aria-busy={submitting ? true : undefined}
-            disabled={submitting}
-            className="h-11 w-full rounded-lg bg-indigo-600 px-4 text-base font-semibold text-white focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 disabled:bg-slate-200 disabled:text-slate-400"
+          <Field
+            label="Equipos que te gustan"
+            helper="Opcional. Escríbelos separados por comas."
           >
-            {submitting ? 'Uniéndome…' : 'Unirme al evento'}
-          </button>
+            {({ id, describedBy, invalid }) => (
+              <Input
+                id={id}
+                type="text"
+                maxLength={200}
+                value={likedTeams}
+                onChange={(event) => setLikedTeams(event.target.value)}
+                aria-describedby={describedBy}
+                invalid={invalid}
+              />
+            )}
+          </Field>
+
+          <Field
+            label="Equipos que NO quieres"
+            helper="Opcional. Quien te regale evitará estos equipos."
+          >
+            {({ id, describedBy, invalid }) => (
+              <Input
+                id={id}
+                type="text"
+                maxLength={200}
+                value={forbiddenTeams}
+                onChange={(event) => setForbiddenTeams(event.target.value)}
+                aria-describedby={describedBy}
+                invalid={invalid}
+              />
+            )}
+          </Field>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setGuideOpen(true)}
+          >
+            Guía de Tallas
+          </Button>
         </form>
       </Card>
+
+      {formError ? (
+        <div className="mt-4">
+          <Notice
+            tone="error"
+            action={
+              <Button type="submit" form="prefs-form" variant="secondary" loading={submitting}>
+                Reintentar
+              </Button>
+            }
+          >
+            {formError}
+          </Notice>
+        </div>
+      ) : null}
+
+      <div className="sticky bottom-0 mt-6 bg-dominant pt-4 sm:static sm:bg-transparent sm:pt-0">
+        <Button
+          type="submit"
+          form="prefs-form"
+          variant="primary"
+          loading={submitting}
+          className="w-full"
+        >
+          {submitting ? 'Uniéndome…' : 'Unirme al evento'}
+        </Button>
+      </div>
+
+      <SizeGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </Screen>
   )
 }

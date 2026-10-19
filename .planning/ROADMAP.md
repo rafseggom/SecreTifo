@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Tras el sorteo, cada participante ve "Te ha tocado regalar a [Nombre]" junto a las preferencias de esa persona y registra su pedido (Tipo Fan/Player/Retro, Equipo, Temporada/Año, Nombre a serigrafiar, Dorsal) viendo los precios de referencia (Fan 11$, Player 16$, Retro 15$); nadie se regala a sí mismo y nadie ve un emparejamiento que no sea el suyo.
   5. El Admin ve cuántos participantes han rellenado su pedido y cuántos faltan, y descarga un .csv UTF-8 con BOM y separador `;` con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin ninguna columna ni campo que revele quién regala a quién.
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -44,7 +44,7 @@ Plans:
 - [x] 01-02-PLAN.md — Dominio puro test-first: normalizador, sorteo circular, datos literales de tallas y precios, y la exportación sin campo de emparejamiento
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-03-PLAN.md — Preferencias y Guía de Tallas: primitivas de componente, modal con las tablas literales y las dos pantallas de entrada y unión
+- [x] 01-03-PLAN.md — Preferencias y Guía de Tallas: primitivas de componente, modal con las tablas literales y las dos pantallas de entrada y unión
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-04-PLAN.md — Sala de espera completa y sorteo transaccional idempotente con un documento por regalador
@@ -89,5 +89,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Flujo completo del amigo invisible | 2/6 | In Progress | - |
+| 1. Flujo completo del amigo invisible | 3/6 | In Progress | - |
 | 2. Privacidad verificada y pulido | 0/TBD | Not started | - |

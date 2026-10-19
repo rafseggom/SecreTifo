@@ -12,14 +12,14 @@ Requirements for the initial release. Each maps to a roadmap phase.
 - [x] **EVENT-01**: El usuario entra indicando solo su nombre (sin contraseña) y su identidad persiste entre recargas del navegador
 - [x] **EVENT-02**: El primer usuario que crea el Evento se convierte en Admin; los usuarios siguientes se unen al mismo evento
 - [x] **EVENT-03**: La app usa Firebase Anonymous Auth de forma silenciosa (sin pantalla de login) para que las reglas de Firestore puedan identificar a cada participante
-- [ ] **EVENT-04**: El sistema evita nombres de participante duplicados o ambiguos dentro del evento (normaliza y avisa/rechaza duplicados)
+- [x] **EVENT-04**: El sistema evita nombres de participante duplicados o ambiguos dentro del evento (normaliza y avisa/rechaza duplicados)
 
 ### Preferencias y Guía de Tallas (PREF)
 
-- [ ] **PREF-01**: Al unirse, el usuario selecciona su talla en un Select (S, M, L, XL, XXL, XXXL)
-- [ ] **PREF-02**: El usuario puede indicar los equipos que le gustan o sus preferencias en un campo de texto
-- [ ] **PREF-03**: El usuario puede indicar equipos prohibidos en un campo de texto
-- [ ] **PREF-04**: Un botón/modal visible "Guía de Tallas" muestra las tablas Fan y Player con los datos literales del spec
+- [x] **PREF-01**: Al unirse, el usuario selecciona su talla en un Select (S, M, L, XL, XXL, XXXL)
+- [x] **PREF-02**: El usuario puede indicar los equipos que le gustan o sus preferencias en un campo de texto
+- [x] **PREF-03**: El usuario puede indicar equipos prohibidos en un campo de texto
+- [x] **PREF-04**: Un botón/modal visible "Guía de Tallas" muestra las tablas Fan y Player con los datos literales del spec
 - [ ] **PREF-05**: Las preferencias del usuario se guardan por participante y son legibles por quien le regala tras el sorteo
 
 ### Lobby y Sorteo (DRAW)
@@ -96,11 +96,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVENT-01 | Phase 1 | Complete |
 | EVENT-02 | Phase 1 | Complete |
 | EVENT-03 | Phase 1 | Complete |
-| EVENT-04 | Phase 1 | Pending |
-| PREF-01 | Phase 1 | Pending |
-| PREF-02 | Phase 1 | Pending |
-| PREF-03 | Phase 1 | Pending |
-| PREF-04 | Phase 1 | Pending |
+| EVENT-04 | Phase 1 | Complete |
+| PREF-01 | Phase 1 | Complete |
+| PREF-02 | Phase 1 | Complete |
+| PREF-03 | Phase 1 | Complete |
+| PREF-04 | Phase 1 | Complete |
 | PREF-05 | Phase 1 | Pending |
 | DRAW-01 | Phase 1 | Pending |
 | DRAW-02 | Phase 1 | Pending |

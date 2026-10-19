@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 3
 waived_count: 0
 fixed_count: 0
-total_count: 2
-last_updated: 2026-10-18T13:22:16.761Z
+total_count: 3
+last_updated: 2026-10-19T12:10:35.293Z
 ---
 
 # Broken Windows Ledger
@@ -17,6 +17,7 @@ last_updated: 2026-10-18T13:22:16.761Z
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 01 | stub | src/pages/RevealPage.tsx |  | RevealPage renders null; S5 completa is owned by 01-05 (unreachable in 01-01 because /reveal only renders when eventStatus === 'drawn') | open |  | 2026-10-18T13:22:16.060Z |  |
 | 2 | 01 | stub | src/pages/AdminPage.tsx |  | AdminPage renders null; S7 completa is owned by 01-06. /admin has no guard and is reachable by URL, so it paints an empty page until 01-06 | open |  | 2026-10-18T13:22:16.761Z |  |
+| 3 | 01 | unrun-verify | src/pages/PreferencesPage.tsx |  | Task 4 <human-check> unrun: needs emulator + dev server. Verify at ~360px that each size table reads as one card per size with no horizontal scroll and the three amber notes present (incl. the 2XL row); join with blank team fields and confirm likedTeams/forbiddenTeams persist as empty strings (never null); re-enter with the same name from an incognito tab and confirm the duplicate notice with focus in the input. | open |  | 2026-10-19T12:10:35.293Z |  |
 
 ````json
 [
@@ -43,6 +44,19 @@ last_updated: 2026-10-18T13:22:16.761Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-18T13:22:16.761Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 3,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/pages/PreferencesPage.tsx",
+    "line": null,
+    "description": "Task 4 <human-check> unrun: needs emulator + dev server. Verify at ~360px that each size table reads as one card per size with no horizontal scroll and the three amber notes present (incl. the 2XL row); join with blank team fields and confirm likedTeams/forbiddenTeams persist as empty strings (never null); re-enter with the same name from an incognito tab and confirm the duplicate notice with focus in the input.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-19T12:10:35.293Z",
     "resolved_at": null,
     "milestone": null
   }

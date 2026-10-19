@@ -89,9 +89,9 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Flujo completo del amigo invisible | 6/6 | In Progress|  |
+| 1. Flujo completo del amigo invisible | 6/6 | Complete | 2026-10-19 |
 | 2. Privacidad verificada y pulido | 0/TBD | Not started | - |
-| 3. Admin login con credenciales .env + ver todos los participantes en panel | 0/3 | Planned | - |
+| 3. Admin login con credenciales .env + ver todos los participantes en panel | 3/3 | Complete | 2026-10-19 |
 
 ### Phase 3: Admin login con credenciales .env + ver todos los participantes en panel
 
@@ -106,14 +106,14 @@ Phases execute in numeric order: 1 → 2 → 3
   4. La tabla ordena pendientes arriba (por joinedAt) y completados abajo.
   5. El botón "Liberar" solo aparece en `status === 'lobby'` y `!hasOrder`; borra el participante y decrementa `participantCount` en una transacción atómica.
 
-**Plans**: 3/3 plans created
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1** *(parallel)*
-- [ ] 03-01-PLAN.md — Tracer: Admin Setup Page — secret validation, anonymous sign-in, event creation, redirect to /admin/login
-- [ ] 03-02-PLAN.md — Admin Login Page — secret validation, localStorage persistence, redirect to /admin
+- [x] 03-01-PLAN.md — Tracer: Admin Setup Page — secret validation, anonymous sign-in, event creation, redirect to /admin/login
+- [x] 03-02-PLAN.md — Admin Login Page — secret validation, localStorage persistence, redirect to /admin
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 03-03-PLAN.md — Admin Page Participants Table — full table with Liberar action, realtime updates via useOrdersAdmin
+- [x] 03-03-PLAN.md — Admin Page Participants Table — full table with Liberar action, realtime updates via useOrdersAdmin
 
 **UI hint**: yes

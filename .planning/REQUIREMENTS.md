@@ -44,6 +44,19 @@ Requirements for the initial release. Each maps to a roadmap phase.
 - [x] **ADMIN-02**: El Admin descarga un archivo .csv (UTF-8 con BOM, separador `;`) con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin incluir quién regala a quién
 - [ ] **ADMIN-03**: El Admin no puede leer la colección de asignaciones secretas (verificado por reglas)
 
+### Admin Setup y Login (ADMIN-SETUP, ADMIN-LOGIN)
+
+- [x] **ADMIN-SETUP-01**: El Admin accede a `/admin/setup` (solo si no existe evento), introduce la clave secreta de `.env`, y crea el evento con su uid anónimo como `adminUid` SIN crear documento de participante
+- [x] **ADMIN-SETUP-02**: El Admin accede a `/admin/login` (solo si existe evento), valida la clave secreta, y la sesión persiste en `localStorage` (`secretkit.adminSecretValidated`) para evitar re-ingreso tras recarga
+- [x] **ADMIN-SETUP-03**: El panel `/admin` requiere evento existente, rol admin y validación de secreto en localStorage
+
+### Admin Panel — Tabla de Participantes (ADMIN-TABLE, ADMIN-LIBERAR)
+
+- [x] **ADMIN-TABLE-01**: El panel `/admin` muestra una tabla completa de participantes: Nombre | Talla | Pref. | Proh. | Estado (✓/✗) | Acciones (Liberar)
+- [x] **ADMIN-TABLE-02**: La tabla ordena pendientes arriba (por joinedAt) y completados abajo
+- [x] **ADMIN-TABLE-03**: Datos provenientes de `useOrdersAdmin` (una sola suscripción, sin nueva suscripción)
+- [x] **ADMIN-LIBERAR-01**: El botón "Liberar" solo aparece en `status === 'lobby'` y `!hasOrder`; borra el participante y decrementa `participantCount` en una transacción atómica
+
 ### Privacidad y Verificación (SEC)
 
 - [x] **SEC-01**: El mapa completo regalador→destinatario nunca se persiste en un único documento
@@ -115,20 +128,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-01 | Phase 1 | Complete |
 | ADMIN-02 | Phase 1 | Complete |
 | ADMIN-03 | Phase 2 | Pending |
+| ADMIN-SETUP-01 | Phase 3 | Complete |
+| ADMIN-SETUP-02 | Phase 3 | Complete |
+| ADMIN-SETUP-03 | Phase 3 | Complete |
+| ADMIN-LOGIN-01 | Phase 3 | Complete |
+| ADMIN-LOGIN-02 | Phase 3 | Complete |
+| ADMIN-LOGIN-03 | Phase 3 | Complete |
+| ADMIN-TABLE-01 | Phase 3 | Complete |
+| ADMIN-TABLE-02 | Phase 3 | Complete |
+| ADMIN-TABLE-03 | Phase 3 | Complete |
+| ADMIN-LIBERAR-01 | Phase 3 | Complete |
 | SEC-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |
 | SEC-03 | Phase 2 | Pending |
 | SEC-04 | Phase 2 | Pending |
 
 **Coverage:**
-- v1 requirements: 26 total
-- Mapped to phases: 26 ✓
+- v1 requirements: 36 total (26 original + 10 Phase 3)
+- Mapped to phases: 36 ✓
 - Unmapped: 0 ✓
 
 **By phase:**
 - Phase 1: 23 requirements (EVENT ×4, PREF ×5, DRAW ×5, ORDER ×5, ADMIN-01..02, SEC-01..02)
 - Phase 2: 3 requirements (ADMIN-03, SEC-03, SEC-04 — las garantías de privacidad cuya entrega *es* su verificación ejecutable)
+- Phase 3: 10 requirements (ADMIN-SETUP-01..03, ADMIN-LOGIN-01..03, ADMIN-TABLE-01..03, ADMIN-LIBERAR-01)
 
 ---
 *Requirements defined: 2026-10-17*
-*Last updated: 2026-10-17 after roadmap creation (26/26 requirements mapped)*
+*Last updated: 2026-10-19 after Phase 3 execution (36/36 requirements mapped)*

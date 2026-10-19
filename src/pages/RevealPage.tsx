@@ -66,7 +66,6 @@ export default function RevealPage() {
       key={reloadKey}
       uid={uid}
       isAdmin={role === 'admin'}
-      onGoLobby={() => navigate('/lobby')}
       onGoAdmin={() => navigate('/admin')}
       onRetry={() => setReloadKey((key) => key + 1)}
     />
@@ -76,12 +75,11 @@ export default function RevealPage() {
 type RevealBodyProps = {
   uid: string
   isAdmin: boolean
-  onGoLobby: () => void
   onGoAdmin: () => void
   onRetry: () => void
 }
 
-function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyProps) {
+function RevealBody({ uid, isAdmin, onGoAdmin, onRetry }: RevealBodyProps) {
   const { loading, error, assignment, missing } = useMyAssignment(uid)
   const [recipient, setRecipient] = useState<Participant | null>(null)
   const [recipientError, setRecipientError] = useState('')
@@ -129,8 +127,8 @@ function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyP
 
   if (pendingRead) return <RevealLoading />
   if (failure) return <RevealError message={failure.message} canRetry={failure.canRetry} onRetry={onRetry} />
-  if (missing || recipientMissing) return <RevealMissing onGoLobby={onGoLobby} />
-  if (!recipient) return <RevealMissing onGoLobby={onGoLobby} />
+  if (missing || recipientMissing) return <RevealMissing onRetry={onRetry} />
+  if (!recipient) return <RevealMissing onRetry={onRetry} />
 
   return (
     <Screen
@@ -221,21 +219,31 @@ function RevealError({
   )
 }
 
-function RevealMissing({ onGoLobby }: { onGoLobby: () => void }) {
+/**
+ * WR-07: this state is reachable only when the event is already `drawn` (App.tsx gates
+ * `/reveal` on it) and `LobbyPage` immediately bounces a drawn event back to `/reveal`, so
+ * the UI-SPEC's mandated «Ir a la sala de espera» action was a guaranteed no-op by
+ * construction. The action is therefore «Reintentar» (the deck's S8 retry action, UI-SPEC
+ * §556), and the explanatory line names the one step that actually helps. This is a
+ * deliberate deviation from `01-UI-SPEC.md:524`; the notice itself is kept verbatim.
+ */
+function RevealMissing({ onRetry }: { onRetry: () => void }) {
   return (
     <Screen title="Tu revelación">
       <div className="mt-6">
         <Notice
           tone="error"
           action={
-            <Button type="button" variant="secondary" onClick={onGoLobby}>
-              Ir a la sala de espera
+            <Button type="button" variant="secondary" onClick={onRetry}>
+              Reintentar
             </Button>
           }
         >
           No encontramos tu asignación.
         </Notice>
-        <p className="mt-3 text-body text-slate-600">Vuelve a la sala de espera e inténtalo de nuevo.</p>
+        <p className="mt-3 text-body text-slate-600">
+          Vuelve a intentarlo. Si el problema continúa, avisa al Admin.
+        </p>
       </div>
     </Screen>
   )

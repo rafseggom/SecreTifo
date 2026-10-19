@@ -55,3 +55,17 @@ export function saveIdentity(identity: StoredIdentity): void {
 export function clearIdentity(): void {
   localStorage.removeItem(IDENTITY_KEY)
 }
+
+const ADMIN_SECRET_KEY = 'secretkit.adminSecretValidated'
+
+export function isAdminSecretValidated(): boolean {
+  return localStorage.getItem(ADMIN_SECRET_KEY) === 'true'
+}
+
+export function setAdminSecretValidated(): void {
+  localStorage.setItem(ADMIN_SECRET_KEY, 'true')
+}
+
+export function clearAdminSecretValidated(): void {
+  localStorage.removeItem(ADMIN_SECRET_KEY)
+}

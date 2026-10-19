@@ -17,7 +17,7 @@
  */
 import { useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
-import * as session from './lib/session'
+import { isAdminSecretValidated, loadIdentity, clearIdentity } from './lib/session'
 import { useSession } from './session/SessionProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FullScreenSpinner } from './components/FullScreenSpinner'
@@ -30,6 +30,7 @@ import LobbyPage from './pages/LobbyPage'
 import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
 import AdminSetupPage from './pages/AdminSetupPage'
+import AdminLoginPage from './pages/AdminLoginPage'
 
 export default function App() {
   const { loading, uid, role, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
@@ -63,7 +64,7 @@ export default function App() {
     )
   }
 
-  const stored = session.loadIdentity()
+  const stored = loadIdentity()
   const identityLost = stored !== null && uid !== null && stored.uid !== uid
   const identityPresent = stored !== null && uid !== null && stored.uid === uid
 
@@ -104,7 +105,7 @@ export default function App() {
                 type="button"
                 variant="secondary"
                 onClick={() => {
-                  session.clearIdentity()
+                  clearIdentity()
                   setIdentityCleared(true)
                 }}
               >
@@ -169,6 +170,21 @@ export default function App() {
           }
         />
         <Route
+          path="/admin/login"
+          element={
+            /*
+              Admin login: only accessible when event exists (eventStatus !== null)
+              and admin is not yet authenticated (no localStorage flag AND role !== 'admin').
+              The page validates VITE_ADMIN_SECRET and sets localStorage flag on success.
+            */
+            eventStatus !== null && !isAdminSecretValidated() && role !== 'admin' ? (
+              <AdminLoginPage />
+            ) : (
+              <Navigate to={home} replace />
+            )
+          }
+        />
+        <Route
           path="/admin"
           element={
             /*
@@ -177,8 +193,11 @@ export default function App() {
               progress, the "who is missing" list and a download button that could only
               fail with permission-denied. No pairing was exposed, but the wrong surface
               was. The rules remain the authority; this is the matching UX guard.
+              Per D-11: requires eventExists && adminAuthed && role === 'admin'
+              adminAuthed = isAdminSecretValidated() (localStorage flag)
+              role === 'admin' from SessionProvider (uid === adminUid)
             */
-            identityPresent && hasPreferences && role === 'admin' ? (
+            eventStatus !== null && role === 'admin' && isAdminSecretValidated() ? (
               <AdminPage />
             ) : (
               <Navigate to={home} replace />

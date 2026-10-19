@@ -21,23 +21,10 @@ import { ParticipantRow } from '../components/ParticipantRow'
 import { DrawConfirmDialog } from '../components/DrawConfirmDialog'
 import { useSession } from '../session/SessionProvider'
 import { runDraw } from '../lib/draw'
+import { errorCopy } from '../lib/errorCopy'
 // Namespace import keeps the two listener callsites the only textual mention of them.
 import * as lobby from '../lib/lobby'
 import type { Participant } from '../domain/types'
-
-/** S8 taxonomy: the Firestore code maps to one copy, and to whether a retry can help. */
-function errorCopy(code: string): { message: string; canRetry: boolean } {
-  if (code === 'permission-denied') {
-    return { message: 'No tienes permiso para ver esto.', canRetry: false }
-  }
-  if (code === 'unavailable') {
-    return { message: 'Sin conexión. Vuelve a intentarlo cuando recuperes la red.', canRetry: true }
-  }
-  if (code === 'resource-exhausted') {
-    return { message: 'Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.', canRetry: false }
-  }
-  return { message: 'Algo ha ido mal.', canRetry: true }
-}
 
 export default function LobbyPage() {
   const { uid, role, eventStatus } = useSession()

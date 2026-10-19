@@ -16,5 +16,16 @@ export default defineConfig({
         singleThread: true,
       },
     },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'hooks',
+          include: ['src/hooks/**/*.{test,spec}.{ts,tsx}'],
+          environment: 'jsdom',
+          setupFiles: ['src/hooks/__tests__/setup.ts'],
+        },
+      },
+    ],
   },
 })

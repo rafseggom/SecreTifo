@@ -26,6 +26,7 @@ import { JerseyOrderForm } from '../components/JerseyOrderForm'
 import { useSession } from '../session/SessionProvider'
 import { useMyAssignment } from '../hooks/useMyAssignment'
 import { getParticipant } from '../lib/lobby'
+import { errorCopy } from '../lib/errorCopy'
 import type { Participant } from '../domain/types'
 
 /** Filler for a preference the recipient never declared (D-14): a row, never a gap. */
@@ -39,20 +40,6 @@ const UNSTATED = 'Sin indicar'
  * «Buscando a quién regalas…» forever.
  */
 const RECIPIENT_NOT_FOUND = 'not-found'
-
-/** S8 taxonomy: the Firestore code maps to one copy, and to whether a retry can help. */
-function errorCopy(code: string): { message: string; canRetry: boolean } {
-  if (code === 'permission-denied') {
-    return { message: 'No tienes permiso para ver esto.', canRetry: false }
-  }
-  if (code === 'unavailable') {
-    return { message: 'Sin conexión. Vuelve a intentarlo cuando recuperes la red.', canRetry: true }
-  }
-  if (code === 'resource-exhausted') {
-    return { message: 'Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.', canRetry: false }
-  }
-  return { message: 'Algo ha ido mal.', canRetry: true }
-}
 
 export default function RevealPage() {
   const navigate = useNavigate()

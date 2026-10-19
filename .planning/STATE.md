@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Flujo completo del amigo invisible
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-10-19T12:11:17.519Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-19T12:27:24.742Z"
 last_activity: 2026-10-18
 last_activity_desc: Phase 01 execution started
-state_head: db82c5bd1dd01087e2fdff671459c9b9ce81dd7e
+state_head: 84d3f2efda1f463775e086b4e8df392278f75733
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 ## Current Position
 
 Phase: 01 (Flujo completo del amigo invisible) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-10-18 — Phase 01 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 23min | 5 tasks | 36 files |
 | Phase 01 P02 | 6min | 3 tasks | 9 files |
 | Phase 01 P03 | 12min | 4 tasks | 14 files |
+| Phase 01 P4 | 11min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,13 @@ Recent decisions affecting current work:
 - [Phase 01]: El estado de identidad perdida (S8) vive en App.tsx comparando loadIdentity() con el uid de useSession(); su unica salida es clearIdentity() hacia el formulario de S1, sin anadir campo, suscripcion ni escritura a SessionProvider, y se resuelve antes que las rutas para que ningun deep-link caiga en una pantalla vacia. Con eventStatus drawn anade la frase del roster congelado y RETIRA la accion: ofrecer reintento prometeria una salida que la transaccion rechaza (D-03, D-10).
 - [Phase 01]: isNameTaken se extrae de la transaccion y se exporta, de modo que S1 y el paso 1 de joinEvent comparten literalmente la misma consulta normalizada; las tres constantes de error (ERR_NAME_TAKEN, ERR_NAME_RACE, ERR_EVENT_CLOSED) se declaran una vez y las usan tanto los throw como la UI, asi que la copia mostrada y el error lanzado no pueden divergir (D-02, EVENT-04).
 - [Phase 01]: El modal de la Guia de Tallas es el <dialog> nativo (showModal) sin reimplementar trampa de foco, Esc, fondo inerte ni retorno de foco; los datos se pintan literales desde FAN_GUIDE/PLAYER_GUIDE, incluida la fila 2XL de Player, y las anomalias se senalan con tres notas ambar y nunca se corrigen (D-12, D-16, D-25).
+- [Phase 01]: El mapa completo regalador-destinatario nunca se persiste: runDraw escribe N documentos de un solo campo recipientUid y cambia status a 'drawn' en la misma transaccion, de modo que las N+1 escrituras son atomicas o no ocurren (D-07/D-09, DRAW-05, SEC-01).
+- [Phase 01]: buildDerangement se llama una vez FUERA de runTransaction y su resultado se captura en una constante antes de abrirla: una transaccion puede reejecutarse ante un conflicto y re-aleatorizar dentro haria el reintento no determinista (D-08, D-09).
+- [Phase 01]: La guardia de minimo existe dos veces a proposito: la funcion pura lanza por debajo de 3 y runDraw repite la guardia en cliente; ninguna de las dos sustituye a la otra (DRAW-03).
+- [Phase 01]: El parametro de error de las dos suscripciones de lobby.ts se llama onFailure -no onError- porque el gate de forma suma las apariciones de 'onError' y de 'err.code' y exige exactamente 2; con el nombre onError el contrato no se puede satisfacer (2 propagaciones de err.code). La propagacion de err.code es identica en ambas suscripciones.
+- [Phase 01]: La insignia Admin de una fila se pinta con el adminUid leido por la propia suscripcion al evento de LobbyPage (p.uid === adminUid), no con el rol de la sesion: asi la insignia marca la fila del Admin para CUALQUIER espectador, no solo para el propio Admin. El bloque de Admin sigue gobernado por el rol derivado role === 'admin'.
+- [Phase 01]: Un fallo de la transaccion cierra el dialogo y muestra la copia S8 en la ranura de error de la pagina (el dialogo no tiene ranura de error propia y el fondo del modal es inerte): asi el mensaje es realmente visible y los botones quedan de nuevo activos al reabrir.
+- [Phase 01]: SessionProvider no requirio delta: 01-01 ya derivaba y exponia role desde event.adminUid === uid, y su gate (adminUid === 1) pasa sin cambios. La tarea se limita a verificar el contrato de useSession, que no se modifica.
 
 ### Pending Todos
 
@@ -109,6 +117,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T12:11:17.451Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-10-19T12:27:24.689Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None

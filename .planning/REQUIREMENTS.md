@@ -24,11 +24,11 @@ Requirements for the initial release. Each maps to a roadmap phase.
 
 ### Lobby y Sorteo (DRAW)
 
-- [ ] **DRAW-01**: El lobby muestra la lista de participantes registrados (sincronizada)
-- [ ] **DRAW-02**: Solo el Admin ve el botón "Empezar Sorteo"
-- [ ] **DRAW-03**: El sorteo exige al menos 3 participantes y solo puede ejecutarse una vez (idempotente ante doble clic)
-- [ ] **DRAW-04**: El sorteo asigna a cada participante un destinatario formando un único ciclo circular: nadie se regala a sí mismo y cada persona regala y recibe exactamente una vez
-- [ ] **DRAW-05**: La asignación (quién regala a quién) se persiste de modo que solo el propio regalador puede leerla
+- [x] **DRAW-01**: El lobby muestra la lista de participantes registrados (sincronizada)
+- [x] **DRAW-02**: Solo el Admin ve el botón "Empezar Sorteo"
+- [x] **DRAW-03**: El sorteo exige al menos 3 participantes y solo puede ejecutarse una vez (idempotente ante doble clic)
+- [x] **DRAW-04**: El sorteo asigna a cada participante un destinatario formando un único ciclo circular: nadie se regala a sí mismo y cada persona regala y recibe exactamente una vez
+- [x] **DRAW-05**: La asignación (quién regala a quién) se persiste de modo que solo el propio regalador puede leerla
 
 ### Pedido (ORDER)
 
@@ -46,7 +46,7 @@ Requirements for the initial release. Each maps to a roadmap phase.
 
 ### Privacidad y Verificación (SEC)
 
-- [ ] **SEC-01**: El mapa completo regalador→destinatario nunca se persiste en un único documento
+- [x] **SEC-01**: El mapa completo regalador→destinatario nunca se persiste en un único documento
 - [x] **SEC-02**: La exportación se construye con una función pura cuyo contrato no puede recibir el emparejamiento (garantía estructural)
 - [ ] **SEC-03**: Las reglas de Firestore deniegan `list` sobre las asignaciones y permiten `get` solo al propio regalador (probado contra el emulador)
 - [ ] **SEC-04**: La exportación usa un identificador de pedido opaco y no incluye la identidad de los participantes, de modo que no se pueda inferir el emparejamiento cruzando talla+equipo con las preferencias públicas
@@ -102,11 +102,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PREF-03 | Phase 1 | Complete |
 | PREF-04 | Phase 1 | Complete |
 | PREF-05 | Phase 1 | Pending |
-| DRAW-01 | Phase 1 | Pending |
-| DRAW-02 | Phase 1 | Pending |
-| DRAW-03 | Phase 1 | Pending |
-| DRAW-04 | Phase 1 | Pending |
-| DRAW-05 | Phase 1 | Pending |
+| DRAW-01 | Phase 1 | Complete |
+| DRAW-02 | Phase 1 | Complete |
+| DRAW-03 | Phase 1 | Complete |
+| DRAW-04 | Phase 1 | Complete |
+| DRAW-05 | Phase 1 | Complete |
 | ORDER-01 | Phase 1 | Pending |
 | ORDER-02 | Phase 1 | Pending |
 | ORDER-03 | Phase 1 | Pending |
@@ -115,7 +115,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ADMIN-01 | Phase 1 | Pending |
 | ADMIN-02 | Phase 1 | Pending |
 | ADMIN-03 | Phase 2 | Pending |
-| SEC-01 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |
 | SEC-03 | Phase 2 | Pending |
 | SEC-04 | Phase 2 | Pending |

@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 3
+open_count: 5
 waived_count: 0
 fixed_count: 0
-total_count: 3
-last_updated: 2026-10-19T12:10:35.293Z
+total_count: 5
+last_updated: 2026-10-19T12:27:59.292Z
 ---
 
 # Broken Windows Ledger
@@ -18,6 +18,8 @@ last_updated: 2026-10-19T12:10:35.293Z
 | 1 | 01 | stub | src/pages/RevealPage.tsx |  | RevealPage renders null; S5 completa is owned by 01-05 (unreachable in 01-01 because /reveal only renders when eventStatus === 'drawn') | open |  | 2026-10-18T13:22:16.060Z |  |
 | 2 | 01 | stub | src/pages/AdminPage.tsx |  | AdminPage renders null; S7 completa is owned by 01-06. /admin has no guard and is reachable by URL, so it paints an empty page until 01-06 | open |  | 2026-10-18T13:22:16.761Z |  |
 | 3 | 01 | unrun-verify | src/pages/PreferencesPage.tsx |  | Task 4 <human-check> unrun: needs emulator + dev server. Verify at ~360px that each size table reads as one card per size with no horizontal scroll and the three amber notes present (incl. the 2XL row); join with blank team fields and confirm likedTeams/forbiddenTeams persist as empty strings (never null); re-enter with the same name from an incognito tab and confirm the duplicate notice with focus in the input. | open |  | 2026-10-19T12:10:35.293Z |  |
+| 4 | 01 | unrun-verify | src/lib/draw.ts |  | Double-click / second runDraw on an already-'drawn' event creates no second document (DRAW-03/D-09): needs the Firestore emulator + two participants. runDraw's read-before-write idempotency and the single-doc-per-giver shape are asserted by node -e gates, but the live no-second-write behaviour is a manual check. | open |  | 2026-10-19T12:27:58.498Z |  |
+| 5 | 01 | unrun-verify | src/pages/LobbyPage.tsx |  | Roster list responsive read at 320px in the lobby (S4/Task 3 <human-check>): the participant row wraps the name and the tu/admin/pendiente badges without horizontal scroll; needs emulator + dev server. | open |  | 2026-10-19T12:27:59.292Z |  |
 
 ````json
 [
@@ -57,6 +59,32 @@ last_updated: 2026-10-19T12:10:35.293Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-19T12:10:35.293Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 4,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/lib/draw.ts",
+    "line": null,
+    "description": "Double-click / second runDraw on an already-'drawn' event creates no second document (DRAW-03/D-09): needs the Firestore emulator + two participants. runDraw's read-before-write idempotency and the single-doc-per-giver shape are asserted by node -e gates, but the live no-second-write behaviour is a manual check.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-19T12:27:58.498Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 5,
+    "kind": "unrun-verify",
+    "phase": "01",
+    "file": "src/pages/LobbyPage.tsx",
+    "line": null,
+    "description": "Roster list responsive read at 320px in the lobby (S4/Task 3 <human-check>): the participant row wraps the name and the tu/admin/pendiente badges without horizontal scroll; needs emulator + dev server.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-19T12:27:59.292Z",
     "resolved_at": null,
     "milestone": null
   }

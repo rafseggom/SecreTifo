@@ -8,6 +8,10 @@
  *     reflected without a reload (CR-02),
  *  4. subscribes to `events/main` for the live event status.
  *
+ * A failed resolution sets `error` (WR-01): the routes must not render, because
+ * every route assumes a resolved identity. `retryIdentity()` re-runs the whole
+ * resolution and is what the boot error screen's `Reintentar` calls.
+ *
  * Every Firestore access goes through `src/lib/lobby.ts`: no `firebase/*` import
  * escapes `src/lib/` (T-01-07, IN-01).
  *
@@ -18,6 +22,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react'
@@ -32,9 +37,21 @@ export type SessionState = {
   role: Role
   hasPreferences: boolean
   eventStatus: EventStatus
+  /**
+   * WR-01: the identity could not be resolved (sign-in failure or a failed first
+   * read). Non-null means NO route may render — the boot error screen owns the UI,
+   * because every route assumes a resolved identity.
+   */
+  error: string | null
 }
 
-const SessionContext = createContext<SessionState | null>(null)
+/** The context value: the state plus the one action that re-runs resolution. */
+export type Session = SessionState & {
+  /** Re-runs identity resolution from scratch; the boot error's `Reintentar`. */
+  retryIdentity: () => void
+}
+
+const SessionContext = createContext<Session | null>(null)
 
 const INITIAL_STATE: SessionState = {
   loading: true,
@@ -43,10 +60,13 @@ const INITIAL_STATE: SessionState = {
   role: 'participant',
   hasPreferences: false,
   eventStatus: 'lobby',
+  error: null,
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionState>(INITIAL_STATE)
+  // Bumping the attempt re-runs resolution from scratch (WR-01's `Reintentar`).
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -67,7 +87,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const storedName = stored && stored.uid === uid ? stored.name : ''
         const name = participant ? participant.name : storedName
 
-        setSession((prev) => ({ ...prev, loading: false, uid, name, hasPreferences }))
+        setSession((prev) => ({
+          ...prev,
+          loading: false,
+          error: null,
+          uid,
+          name,
+          hasPreferences,
+        }))
 
         // CR-02: the join writes `participants/{uid}` AFTER this effect sampled it, so
         // the one-shot read above is not enough — a participant who just joined would
@@ -96,10 +123,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             role: event && event.adminUid === uid ? 'admin' : 'participant',
           }))
         })
-      } catch {
+      } catch (thrown) {
         if (cancelled) return
-        // Bound the spinner: a failed identity resolution must not spin forever.
-        setSession((prev) => ({ ...prev, loading: false }))
+        // WR-01: bound the spinner AND surface the failure. Clearing `loading` alone
+        // left `uid: null`, so the routes rendered and the entry form looked healthy
+        // while every attempt silently could not work. The error is a code, never
+        // data (no pairing value can reach it).
+        const code =
+          thrown instanceof Error && 'code' in thrown
+            ? String((thrown as { code: unknown }).code)
+            : 'unknown'
+        setSession((prev) => ({ ...prev, loading: false, uid: null, error: code }))
       }
     }
 
@@ -110,12 +144,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (unsubscribeParticipant) unsubscribeParticipant()
       if (unsubscribeEvent) unsubscribeEvent()
     }
-  }, [])
+  }, [attempt])
 
-  return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
+  const value = useMemo<Session>(
+    () => ({
+      ...session,
+      retryIdentity: () => {
+        // A retry starts from a clean, bounded state: spinner up, previous error gone.
+        // Reset here, not inside the effect, so the effect only synchronises with an
+        // external system (no setState-in-effect cascade) — the FIRST mount already
+        // starts from INITIAL_STATE.
+        setSession((prev) => ({ ...prev, loading: true, error: null }))
+        setAttempt((current) => current + 1)
+      },
+    }),
+    [session],
+  )
+
+  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
-export function useSession(): SessionState {
+export function useSession(): Session {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error('useSession debe usarse dentro de <SessionProvider>')
   return ctx

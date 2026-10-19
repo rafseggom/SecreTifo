@@ -31,11 +31,36 @@ import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
 
 export default function App() {
-  const { loading, uid, hasPreferences, eventStatus } = useSession()
+  const { loading, uid, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
+    useSession()
   const [identityCleared, setIdentityCleared] = useState(false)
 
   // Never a blank screen before the first server response.
   if (loading) return <FullScreenSpinner />
+
+  // WR-01 (binding must-have of 01-01): a failed identity resolution renders NO route.
+  // The entry form would otherwise look healthy while every attempt silently could not
+  // work, and submitting it persisted `{ uid: '' }`.
+  if (sessionError) {
+    return (
+      <ErrorBoundary>
+        <Screen title="SecretKit">
+          <div className="mt-6">
+            <Notice
+              tone="error"
+              action={
+                <Button type="button" variant="secondary" onClick={retryIdentity}>
+                  Reintentar
+                </Button>
+              }
+            >
+              Algo ha ido mal.
+            </Notice>
+          </div>
+        </Screen>
+      </ErrorBoundary>
+    )
+  }
 
   const stored = session.loadIdentity()
   const identityLost = stored !== null && uid !== null && stored.uid !== uid

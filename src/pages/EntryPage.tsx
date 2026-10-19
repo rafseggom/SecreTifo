@@ -51,10 +51,19 @@ export default function EntryPage() {
 
     setFieldError('')
     setFormError('')
+
+    // WR-01: without a uid there is nothing to join and nothing to persist. The old
+    // `uid ?? ''` wrote a placeholder identity into localStorage, which every later
+    // render read as "not signed in" — a form that looked like it worked.
+    if (!uid) {
+      setFormError('No hemos podido unirte al evento.')
+      return
+    }
+
     setSubmitting(true)
 
     try {
-      if (await isNameTaken(trimmed, uid ?? undefined)) {
+      if (await isNameTaken(trimmed, uid)) {
         setFieldError(ERR_NAME_TAKEN)
         setSubmitting(false)
         inputRef.current?.focus()
@@ -62,7 +71,7 @@ export default function EntryPage() {
       }
 
       // The pending name is what `/preferences` reads back through loadIdentity().
-      saveIdentity({ uid: uid ?? '', name: trimmed })
+      saveIdentity({ uid, name: trimmed })
       navigate('/preferences')
     } catch {
       setFormError('No hemos podido unirte al evento.')

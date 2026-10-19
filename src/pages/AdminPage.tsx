@@ -32,36 +32,9 @@ import { useOrdersAdmin } from '../hooks/useOrdersAdmin'
 import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorCode } from '../lib/orders'
 import { downloadCsv, ordersCsvFilename } from '../lib/download'
 import { buildOrdersExport } from '../domain/exportOrders'
+import { errorCopy, downloadErrorCopy } from '../lib/errorCopy'
 
 const TRUST_NOTE = 'La lista no incluye quién regala a quién.'
-const DOWNLOAD_ERROR = 'No hemos podido generar el archivo.'
-const PERMISSION_COPY = 'No tienes permiso para ver esto.'
-
-/** S8 taxonomy: the Firestore code maps to one copy, and to whether a retry can help. */
-function errorCopy(code: string): { message: string; canRetry: boolean } {
-  if (code === 'permission-denied') {
-    return { message: PERMISSION_COPY, canRetry: false }
-  }
-  if (code === 'unavailable') {
-    return { message: 'Sin conexión. Vuelve a intentarlo cuando recuperes la red.', canRetry: true }
-  }
-  if (code === 'resource-exhausted') {
-    return { message: 'Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.', canRetry: false }
-  }
-  return { message: 'Algo ha ido mal.', canRetry: true }
-}
-
-/**
- * A download failure is not the S8 read taxonomy: the one code worth its own copy is the
- * one that tells a user who is not the Admin why the list never arrived. Everything else
- * is the S7 download error, which a retry can fix.
- */
-function downloadErrorCopy(code: string): { message: string; canRetry: boolean } {
-  if (code === 'permission-denied') {
-    return { message: PERMISSION_COPY, canRetry: false }
-  }
-  return { message: DOWNLOAD_ERROR, canRetry: true }
-}
 
 export default function AdminPage() {
   const [reloadKey, setReloadKey] = useState(0)
@@ -115,14 +88,13 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
       const errorMessage = err instanceof Error ? err.message : 'Algo ha ido mal.'
       if (Object.values(LIBERAR_ERRORS).includes(errorMessage as LiberarErrorCode)) {
         setLiberarError(errorMessage)
-      } else if (errorMessage.includes('permission-denied')) {
-        setLiberarError(LIBERAR_ERRORS.PERMISSION_DENIED)
-      } else if (errorMessage.includes('unavailable')) {
-        setLiberarError('Sin conexión. Vuelve a intentarlo cuando recuperes la red.')
-      } else if (errorMessage.includes('resource-exhausted')) {
-        setLiberarError('Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.')
       } else {
-        setLiberarError('No se ha podido liberar al participante.')
+        const code =
+          err instanceof Error && 'code' in err
+            ? String((err as { code: unknown }).code)
+            : 'unknown'
+        const { message } = errorCopy(code)
+        setLiberarError(message)
       }
     }
   }

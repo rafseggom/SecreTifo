@@ -28,11 +28,12 @@ import { SizeGuideModal } from '../components/SizeGuideModal'
 import { useSession } from '../session/SessionProvider'
 import { clearIdentity, loadIdentity } from '../lib/session'
 import { ERR_EVENT_CLOSED, ERR_NAME_RACE, ERR_NAME_TAKEN, joinEvent } from '../lib/joinEvent'
+import { errorCopy } from '../lib/errorCopy'
 import type { Size } from '../domain/types'
 
 export default function PreferencesPage() {
   const navigate = useNavigate()
-  const { uid, name: sessionName } = useSession()
+  const { uid, name: sessionName, loading: sessionLoading } = useSession()
 
   const stored = loadIdentity()
   const name = stored?.name ?? sessionName
@@ -75,109 +76,138 @@ export default function PreferencesPage() {
       const message = cause instanceof Error ? cause.message : ''
       const known =
         message === ERR_NAME_TAKEN || message === ERR_NAME_RACE || message === ERR_EVENT_CLOSED
-      setFormError(known ? message : 'No hemos podido unirte al evento.')
+      if (known) {
+        setFormError(message)
+      } else {
+        const code =
+          cause instanceof Error && 'code' in cause
+            ? String((cause as { code: unknown }).code)
+            : 'unknown'
+        const { message: errMessage, canRetry } = errorCopy(code)
+        setFormError(errMessage)
+        // If retryable, the Notice action will handle re-submit
+      }
       setSubmitting(false)
     }
   }
 
   return (
     <Screen title="Tus preferencias" stickyCta>
-      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-slate-600">
-        <span className="break-words">Entrarás como {name}</span>
-        <Button type="button" variant="ghost" onClick={handleChangeName}>
-          Cambiar nombre
-        </Button>
-      </p>
+      {sessionLoading ? (
+        // Loading skeleton while session resolves
+        <Card className="mt-6 animate-pulse">
+          <div className="flex flex-col gap-6">
+            <div className="h-10 w-3/4 bg-slate-200 rounded motion-reduce:animate-none" />
+            <div className="h-10 w-1/2 bg-slate-200 rounded motion-reduce:animate-none" />
+            <div className="h-10 w-1/4 bg-slate-200 rounded motion-reduce:animate-none" />
+            <div className="h-12 w-full bg-slate-200 rounded motion-reduce:animate-none" />
+          </div>
+        </Card>
+      ) : (
+        <>
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-slate-600">
+            <span className="break-words">Entrarás como {name}</span>
+            <Button type="button" variant="ghost" onClick={handleChangeName}>
+              Cambiar nombre
+            </Button>
+          </p>
 
-      <Card className="mt-6">
-        <form id="prefs-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-          <Field label="Tu talla" required error={sizeError || undefined}>
-            {({ id, describedBy, invalid }) => (
-              <Select
-                id={id}
-                ref={selectRef}
-                placeholder="Elige una talla"
-                value={size}
-                onChange={(event) => setSize(event.target.value as Size | '')}
-                aria-describedby={describedBy}
-                invalid={invalid}
-              />
-            )}
-          </Field>
+          <Card className="mt-6">
+            <form id="prefs-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+              <Field label="Tu talla" required error={sizeError || undefined}>
+                {({ id, describedBy, invalid }) => (
+                  <Select
+                    id={id}
+                    ref={selectRef}
+                    placeholder="Elige una talla"
+                    value={size}
+                    onChange={(event) => setSize(event.target.value as Size | '')}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                  />
+                )}
+              </Field>
 
-          <Field
-            label="Equipos que te gustan"
-            helper="Opcional. Escríbelos separados por comas."
-          >
-            {({ id, describedBy, invalid }) => (
-              <Input
-                id={id}
-                type="text"
-                maxLength={200}
-                value={likedTeams}
-                onChange={(event) => setLikedTeams(event.target.value)}
-                aria-describedby={describedBy}
-                invalid={invalid}
-              />
-            )}
-          </Field>
+              <Field
+                label="Equipos que te gustan"
+                helper="Opcional. Escríbelos separados por comas."
+              >
+                {({ id, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type="text"
+                    maxLength={200}
+                    value={likedTeams}
+                    onChange={(event) => setLikedTeams(event.target.value)}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                  />
+                )}
+              </Field>
 
-          <Field
-            label="Equipos que NO quieres"
-            helper="Opcional. Quien te regale evitará estos equipos."
-          >
-            {({ id, describedBy, invalid }) => (
-              <Input
-                id={id}
-                type="text"
-                maxLength={200}
-                value={forbiddenTeams}
-                onChange={(event) => setForbiddenTeams(event.target.value)}
-                aria-describedby={describedBy}
-                invalid={invalid}
-              />
-            )}
-          </Field>
+              <Field
+                label="Equipos que NO quieres"
+                helper="Opcional. Quien te regale evitará estos equipos."
+              >
+                {({ id, describedBy, invalid }) => (
+                  <Input
+                    id={id}
+                    type="text"
+                    maxLength={200}
+                    value={forbiddenTeams}
+                    onChange={(event) => setForbiddenTeams(event.target.value)}
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                  />
+                )}
+              </Field>
 
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={() => setGuideOpen(true)}
-          >
-            Guía de Tallas
-          </Button>
-        </form>
-      </Card>
-
-      {formError ? (
-        <div className="mt-4">
-          <Notice
-            tone="error"
-            action={
-              <Button type="submit" form="prefs-form" variant="secondary" loading={submitting}>
-                Reintentar
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => setGuideOpen(true)}
+              >
+                Guía de Tallas
               </Button>
-            }
-          >
-            {formError}
-          </Notice>
-        </div>
-      ) : null}
+            </form>
+          </Card>
 
-      <div className="sticky bottom-0 mt-6 bg-dominant pt-4 sm:static sm:bg-transparent sm:pt-0">
-        <Button
-          type="submit"
-          form="prefs-form"
-          variant="primary"
-          loading={submitting}
-          className="w-full"
-        >
-          {submitting ? 'Uniéndome…' : 'Unirme al evento'}
-        </Button>
-      </div>
+          {formError ? (
+            <div className="mt-4">
+              <Notice
+                tone="error"
+                action={
+                  <Button
+                    type="submit"
+                    form="prefs-form"
+                    variant="secondary"
+                    loading={submitting}
+                  >
+                    Reintentar
+                  </Button>
+                }
+              >
+                {formError}
+              </Notice>
+            </div>
+          ) : null}
 
-      <SizeGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+          <div className="sticky bottom-0 mt-6 bg-dominant pt-4 sm:static sm:bg-transparent sm:pt-0">
+            <Button
+              type="submit"
+              form="prefs-form"
+              variant="primary"
+              loading={submitting}
+              className="w-full"
+            >
+              {submitting ? 'Uniéndome…' : 'Unirme al evento'}
+            </Button>
+          </div>
+
+          <SizeGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+        </>
+      )}
     </Screen>
   )
 }

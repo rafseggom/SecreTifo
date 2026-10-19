@@ -62,7 +62,7 @@ function firstSignificantChar(value: string): string {
 export function escapeCsvCell(value: string): string {
   const safe = FORMULA_LEAD.has(firstSignificantChar(value)) ? "'" + value : value
   const mustQuote =
-    safe.includes(SEP) || safe.includes('"') || safe.includes('\r') || safe.includes('\n')
+    safe.includes(SEP) || safe.includes(',') || safe.includes('"') || safe.includes('\r') || safe.includes('\n')
   return mustQuote ? '"' + safe.replace(/"/g, '""') + '"' : safe
 }
 

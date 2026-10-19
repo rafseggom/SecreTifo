@@ -10,5 +10,11 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     globals: false,
+    setupFiles: ['src/lib/__tests__/emulator-setup.ts'],
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
   },
 })

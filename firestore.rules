@@ -41,11 +41,31 @@ service cloud.firestore {
       match /participants/{uid} {
         allow get, list: if isSignedIn();
 
-        allow create, update: if isSignedIn()
+        // D-10: the roster is FROZEN once the draw has run. A document may only be
+        // created while the event is still in the lobby.
+        allow create: if isSignedIn()
           && uid == request.auth.uid
+          && get(/databases/$(database)/documents/events/main).data.status == 'lobby'
           && request.resource.data.name is string
           && request.resource.data.nameNormalized is string
           && request.resource.data.size in ['S','M','L','XL','XXL','XXXL'];
+
+        // After the draw the ONLY writable field is `hasOrder`: the order form still
+        // records its progress on this document (D-19) and saving an order is by
+        // definition a post-draw action (the form lives on /reveal). Everything the
+        // giver already ordered against — name, nameNormalized, size, likedTeams,
+        // forbiddenTeams — becomes immutable, which is what D-10 protects: without
+        // this, a participant using devtools could change the size a giver already
+        // ordered against.
+        allow update: if isSignedIn()
+          && uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.nameNormalized is string
+          && request.resource.data.size in ['S','M','L','XL','XXL','XXXL']
+          && (
+            get(/databases/$(database)/documents/events/main).data.status == 'lobby'
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hasOrder'])
+          );
         // NOTE: uniqueness of nameNormalized CANNOT be expressed in rules — rules cannot
         // query. Enforced client-side, best-effort (Pitfall 3, Open Question 1).
 

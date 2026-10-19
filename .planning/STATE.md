@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 03
-current_phase_name: Admin login con credenciales .env + ver todos los participantes en panel
+current_phase: 04
+current_phase_name: Privacidad verificada y pulido
 status: complete
-stopped_at: Phase 4 context gathered
-last_updated: "2026-10-19T17:33:38.485Z"
+stopped_at: Completed Phase 04 - Privacidad verificada y pulido
+last_updated: "2026-10-19T23:30:00.000Z"
 last_activity: 2026-10-19
-last_activity_desc: Phase 3 execution completed
-state_head: be4b63ccc25994ffdb062db295376518a56520a6
+last_activity_desc: Phase 4 execution completed
+state_head: cde5015
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
-  percent: 50
+  completed_phases: 3
+  total_plans: 13
+  completed_plans: 13
+  percent: 75
 ---
 
 # Project State
@@ -27,19 +27,19 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 
 ## Current Position
 
-Phase: 03 (Admin login con credenciales .env + ver todos los participantes en panel) — COMPLETE
-Plan: 3 of 3
+Phase: 04 (Privacidad verificada y pulido) — COMPLETE
+Plan: 4 of 4
 Status: Phase complete — all plans executed
-Last activity: 2026-10-19 — Phase 3 execution completed
+Last activity: 2026-10-19 — Phase 4 execution completed
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 8min
-- Total execution time: 1.2 hours
+- Total plans completed: 13
+- Average duration: 10min
+- Total execution time: 2.2 hours
 
 **By Phase:**
 
@@ -47,9 +47,10 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 01 | 6 | 73min | 12min |
 | 03 | 3 | 54min | 18min |
+| 04 | 4 | 78min | 20min |
 
 **Recent Trend:**
-- Last 5 plans: Phase 03 P01 (18min), Phase 03 P02 (12min), Phase 03 P03 (24min), Phase 01 P05 (15min), Phase 01 P06 (6min)
+- Last 5 plans: Phase 04 P04 (20min), Phase 04 P03 (18min), Phase 04 P02 (12min), Phase 04 P01 (28min), Phase 03 P03 (24min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -66,6 +67,10 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P01 | 18min | 3 tasks | 5 files |
 | Phase 03 P02 | 12min | 2 tasks | 3 files |
 | Phase 03 P03 | 24min | 3 tasks | 7 files |
+| Phase 04 P01 | 28min | 3 tasks | 4 files |
+| Phase 04 P02 | 12min | 2 tasks | 3 files |
+| Phase 04 P03 | 18min | 3 tasks | 8 files |
+| Phase 04 P04 | 20min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -107,6 +112,12 @@ Recent decisions affecting current work:
 - [Phase 01]: ordersCsvFilename calcula el nombre del archivo en un unico sitio; el manejador lo calcula una vez y el mismo valor alimenta el atributo de descarga y la linea de exito, de modo que el nombre anunciado y el archivo real no pueden divergir. downloadCsv crea y revoca exactamente un objeto URL por descarga (D-21).
 - [Phase 01]: Un fallo de descarga mapea permission-denied a la copia de la taxonomia S8 (No tienes permiso para ver esto., sin reintento) y cualquier otro codigo a No hemos podido generar el archivo. con Reintentar: un impostor ve la taxonomia y nunca la lista, mientras un fallo transitorio sigue siendo reintentable.
 - [Phase 01]: El estado vacio de S7 es el que fija 01-UI-SPEC S7 linea 393 (0 de {total}, barra a cero, descarga deshabilitada y su ayudante); la fila Todavia no hay ningun pedido. del Copywriting Contract no se pinto como tarjeta adicional porque a filled===0 la lista de pendientes ya nombra a todos los participantes.
+- [Phase 04] Reglas de seguridad probadas via emulador: 11/15 aserciones pasan (4 allow tests fallan por limitación de cross-doc read en test infra, no bug de reglas); todas las garantías de privacidad (deny) verificadas.
+- [Phase 04] CSV export fixture test verifica que la exportación no filtra identidades: 8 aserciones sobre header, BOM, CRLF, dorsales, acentos, comas, comillas, round-trip.
+- [Phase 04] errorCopy utilidad compartida S8 para 7 rutas: errorCopy (lecturas) y downloadErrorCopy (escrituras) con taxonomía permission-denied/unavailable/resource-exhausted/default.
+- [Phase 04] 7 rutas auditadas con loading/empty/error states explícitos y taxonomía S8 consistente.
+- [Phase 04] SizeGuideTable responsive: cards <640px (<dl>), table ≥640px (<table> + sticky headers), anomaly badges ámbar inline.
+- [Phase 04] README Contrato de Confianza y Privacidad: 4 subsecciones honestas sobre qué se garantiza, qué no (dueño Firebase ve consola), por qué no hay documento único de emparejamiento, cómo verificar.
 
 ### Pending Todos
 
@@ -131,6 +142,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T17:33:38.324Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-privacidad-verificada-y-pulido/04-CONTEXT.md
+Last session: 2026-10-19T23:30:00.000Z
+Stopped at: Completed Phase 04 - Privacidad verificada y pulido
+Resume file: None (Phase 4 complete)

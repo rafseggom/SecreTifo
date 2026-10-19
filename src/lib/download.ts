@@ -29,10 +29,18 @@ export function downloadCsv(filename: string, csv: string): void {
 }
 
 /**
- * The orders file name, `pedidos-{AAAA-MM-DD}.csv`, from the ISO date portion of the
- * given moment. ISO and not a locale format: a locale date would leak an ambiguous
- * ordering into the name the vendedor receives.
+ * The orders file name, `pedidos-{AAAA-MM-DD}.csv`, from the LOCAL calendar date of the
+ * given moment (IN-03).
+ *
+ * Local, not UTC: the organiser reads the name against their own calendar, so a download
+ * just after local midnight must not be named with the previous UTC date. The
+ * `AAAA-MM-DD` shape is kept even though the value is local, because a locale format
+ * would leak an ambiguous ordering into the name the vendedor receives — the two
+ * concerns (which day, how it is written) are independent.
  */
 export function ordersCsvFilename(date = new Date()): string {
-  return `pedidos-${date.toISOString().slice(0, 10)}.csv`
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `pedidos-${year}-${month}-${day}.csv`
 }

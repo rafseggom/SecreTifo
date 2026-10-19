@@ -20,7 +20,7 @@ Requirements for the initial release. Each maps to a roadmap phase.
 - [x] **PREF-02**: El usuario puede indicar los equipos que le gustan o sus preferencias en un campo de texto
 - [x] **PREF-03**: El usuario puede indicar equipos prohibidos en un campo de texto
 - [x] **PREF-04**: Un botón/modal visible "Guía de Tallas" muestra las tablas Fan y Player con los datos literales del spec
-- [ ] **PREF-05**: Las preferencias del usuario se guardan por participante y son legibles por quien le regala tras el sorteo
+- [x] **PREF-05**: Las preferencias del usuario se guardan por participante y son legibles por quien le regala tras el sorteo
 
 ### Lobby y Sorteo (DRAW)
 
@@ -32,11 +32,11 @@ Requirements for the initial release. Each maps to a roadmap phase.
 
 ### Pedido (ORDER)
 
-- [ ] **ORDER-01**: Tras el sorteo, el usuario ve "Te ha tocado regalar a [Nombre]" junto con las preferencias del destinatario
-- [ ] **ORDER-02**: El usuario registra su pedido con Tipo (Fan/Player/Retro), Equipo, Temporada/Año, Nombre a serigrafiar y Dorsal
-- [ ] **ORDER-03**: La pantalla de pedido muestra los precios de referencia: Camiseta Fan 11$, Player 16$, Retro 15$
-- [ ] **ORDER-04**: El pedido guardado no contiene ningún campo que revele el emparejamiento regalador→destinatario
-- [ ] **ORDER-05**: El usuario ve el estado de su propio pedido (pendiente / guardado)
+- [x] **ORDER-01**: Tras el sorteo, el usuario ve "Te ha tocado regalar a [Nombre]" junto con las preferencias del destinatario
+- [x] **ORDER-02**: El usuario registra su pedido con Tipo (Fan/Player/Retro), Equipo, Temporada/Año, Nombre a serigrafiar y Dorsal
+- [x] **ORDER-03**: La pantalla de pedido muestra los precios de referencia: Camiseta Fan 11$, Player 16$, Retro 15$
+- [x] **ORDER-04**: El pedido guardado no contiene ningún campo que revele el emparejamiento regalador→destinatario
+- [x] **ORDER-05**: El usuario ve el estado de su propio pedido (pendiente / guardado)
 
 ### Admin y Exportación (ADMIN)
 
@@ -101,17 +101,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PREF-02 | Phase 1 | Complete |
 | PREF-03 | Phase 1 | Complete |
 | PREF-04 | Phase 1 | Complete |
-| PREF-05 | Phase 1 | Pending |
+| PREF-05 | Phase 1 | Complete |
 | DRAW-01 | Phase 1 | Complete |
 | DRAW-02 | Phase 1 | Complete |
 | DRAW-03 | Phase 1 | Complete |
 | DRAW-04 | Phase 1 | Complete |
 | DRAW-05 | Phase 1 | Complete |
-| ORDER-01 | Phase 1 | Pending |
-| ORDER-02 | Phase 1 | Pending |
-| ORDER-03 | Phase 1 | Pending |
-| ORDER-04 | Phase 1 | Pending |
-| ORDER-05 | Phase 1 | Pending |
+| ORDER-01 | Phase 1 | Complete |
+| ORDER-02 | Phase 1 | Complete |
+| ORDER-03 | Phase 1 | Complete |
+| ORDER-04 | Phase 1 | Complete |
+| ORDER-05 | Phase 1 | Complete |
 | ADMIN-01 | Phase 1 | Pending |
 | ADMIN-02 | Phase 1 | Pending |
 | ADMIN-03 | Phase 2 | Pending |

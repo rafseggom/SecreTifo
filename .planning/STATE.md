@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Flujo completo del amigo invisible
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-19T12:27:24.742Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-19T12:42:07.223Z"
 last_activity: 2026-10-18
 last_activity_desc: Phase 01 execution started
-state_head: 84d3f2efda1f463775e086b4e8df392278f75733
+state_head: 1ee4f6cf3c40805dde6972c35de1259cdd0dab79
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 ## Current Position
 
 Phase: 01 (Flujo completo del amigo invisible) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-10-18 — Phase 01 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 6min | 3 tasks | 9 files |
 | Phase 01 P03 | 12min | 4 tasks | 14 files |
 | Phase 01 P4 | 11min | 3 tasks | 5 files |
+| Phase 01 P05 | 15min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 01]: La insignia Admin de una fila se pinta con el adminUid leido por la propia suscripcion al evento de LobbyPage (p.uid === adminUid), no con el rol de la sesion: asi la insignia marca la fila del Admin para CUALQUIER espectador, no solo para el propio Admin. El bloque de Admin sigue gobernado por el rol derivado role === 'admin'.
 - [Phase 01]: Un fallo de la transaccion cierra el dialogo y muestra la copia S8 en la ranura de error de la pagina (el dialogo no tiene ranura de error propia y el fondo del modal es inerte): asi el mensaje es realmente visible y los botones quedan de nuevo activos al reabrir.
 - [Phase 01]: SessionProvider no requirio delta: 01-01 ya derivaba y exponia role desde event.adminUid === uid, y su gate (adminUid === 1) pasa sin cambios. La tarea se limita a verificar el contrato de useSession, que no se modifica.
+- [Phase 01]: The reveal reads the pairing only by document id (getMyAssignment -> getParticipant); a query on assignments is broken code, not merely unsafe, because the rules deny list to everyone including the Admin.
+- [Phase 01]: ORDER-04 is a type invariant: OrderInput and ExportedOrder have no field for the giver's or recipient's identity, so the order document cannot carry the pairing by construction.
+- [Phase 01]: The order and the participant's hasOrder flag are written in the same writeBatch, so the Admin's progress and the order cannot disagree (Pitfall 11); the deterministic doc id makes it an idempotent overwrite (D-18).
 
 ### Pending Todos
 
@@ -117,6 +121,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T12:27:24.689Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-19T12:42:07.185Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None

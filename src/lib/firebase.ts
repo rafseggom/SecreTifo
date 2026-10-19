@@ -16,6 +16,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+// Admin secret (UI gate only, not cryptographic).
+const adminSecret = import.meta.env.VITE_ADMIN_SECRET
+
 // Fail loudly and *named* — never a silent `undefined` (Pitfall 17).
 const missing = (
   [
@@ -24,6 +27,7 @@ const missing = (
     ['VITE_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
     ['VITE_FIREBASE_STORAGE_BUCKET', firebaseConfig.storageBucket],
     ['VITE_FIREBASE_APP_ID', firebaseConfig.appId],
+    ['VITE_ADMIN_SECRET', adminSecret],
   ] as const
 )
   .filter(([, value]) => !value)
@@ -31,8 +35,8 @@ const missing = (
 
 if (missing.length > 0) {
   throw new Error(
-    `Faltan variables de entorno de Firebase: ${missing.join(', ')}. ` +
-      'Copia .env.example a .env.local y rellena los valores de la consola de Firebase.',
+    `Faltan variables de entorno: ${missing.join(', ')}. ` +
+      'Copia .env.example a .env.local y rellena los valores.',
   )
 }
 

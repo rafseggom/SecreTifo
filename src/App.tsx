@@ -29,6 +29,7 @@ import PreferencesPage from './pages/PreferencesPage'
 import LobbyPage from './pages/LobbyPage'
 import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
+import AdminSetupPage from './pages/AdminSetupPage'
 
 export default function App() {
   const { loading, uid, role, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
@@ -154,6 +155,17 @@ export default function App() {
             ) : (
               <Navigate to={home} replace />
             )
+          }
+        />
+        <Route
+          path="/admin/setup"
+          element={
+            /*
+              Admin setup: only accessible when NO event exists (eventStatus === null).
+              The page itself validates the VITE_ADMIN_SECRET against user input.
+              On success, creates events/main with adminUid = anonymous uid and redirects to /admin/login.
+            */
+            eventStatus === null ? <AdminSetupPage /> : <Navigate to={home} replace />
           }
         />
         <Route

@@ -81,3 +81,47 @@ export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
     }
   })
 }
+
+/**
+ * ADMIN-LIBERAR-01 — remove a participant from the event (Admin action).
+ *
+ * Deletes the participant document and decrements participantCount atomically.
+ * Only allowed when event status === 'lobby' AND participant has no order (hasOrder === false).
+ * Uses a transaction to ensure atomicity.
+ */
+export const LIBERAR_ERRORS = {
+  NOT_IN_LOBBY: 'El sorteo ya se ha realizado: no se pueden liberar participantes.',
+  HAS_ORDER: 'Este participante ya ha guardado su pedido y no puede ser liberado.',
+  NOT_FOUND: 'El participante no existe.',
+  PERMISSION_DENIED: 'No tienes permiso para liberar participantes.',
+} as const
+
+export type LiberarErrorCode = (typeof LIBERAR_ERRORS)[keyof typeof LIBERAR_ERRORS]
+
+export async function liberarParticipant(participantUid: string): Promise<void> {
+  await firestore.runTransaction(db, async (tx) => {
+    const eventRef = firestore.doc(db, 'events/main')
+    const participantRef = firestore.doc(db, 'events', 'main', 'participants', participantUid)
+
+    const eventSnap = await tx.get(eventRef)
+    if (!eventSnap.exists()) {
+      throw new Error(LIBERAR_ERRORS.NOT_FOUND)
+    }
+    const eventData = eventSnap.data()
+    if (eventData.status !== 'lobby') {
+      throw new Error(LIBERAR_ERRORS.NOT_IN_LOBBY)
+    }
+
+    const participantSnap = await tx.get(participantRef)
+    if (!participantSnap.exists()) {
+      throw new Error(LIBERAR_ERRORS.NOT_FOUND)
+    }
+    const participantData = participantSnap.data()
+    if (participantData.hasOrder) {
+      throw new Error(LIBERAR_ERRORS.HAS_ORDER)
+    }
+
+    tx.delete(participantRef)
+    tx.update(eventRef, { participantCount: firestore.increment(-1) })
+  })
+}

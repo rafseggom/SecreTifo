@@ -78,7 +78,7 @@ service cloud.firestore {
         // NOTE: uniqueness of nameNormalized CANNOT be expressed in rules — rules cannot
         // query. Enforced client-side, best-effort (Pitfall 3, Open Question 1).
 
-        allow delete: if isSignedIn() && uid == request.auth.uid; // needed by the post-commit collision rollback
+        allow delete: if isSignedIn() && (uid == request.auth.uid || isAdmin()); // own delete (collision rollback) or Admin liberar
       }
 
       // assignments — the pairing lives here, one document per giver, and NOWHERE else

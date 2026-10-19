@@ -23,6 +23,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { SpinnerIcon } from './icons'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
+export type ButtonSize = 'default' | 'sm'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: 'bg-indigo-600 text-white font-semibold',
@@ -31,17 +32,24 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-slate-700 font-normal',
 }
 
+const SIZE_CLASSES: Record<ButtonSize, string> = {
+  default: 'h-11 min-w-11 px-4 text-base',
+  sm: 'h-9 min-w-9 px-3 text-label',
+}
+
 const BASE_CLASSES =
-  'inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-4 text-base focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400'
+  'inline-flex items-center justify-center gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant: ButtonVariant
+  size?: ButtonSize
   loading?: boolean
   children: ReactNode
 }
 
 export function Button({
   variant,
+  size = 'default',
   loading = false,
   disabled,
   className,
@@ -58,7 +66,7 @@ export function Button({
       disabled={isDisabled}
       aria-disabled={isDisabled ? true : undefined}
       aria-busy={loading ? true : undefined}
-      className={`${BASE_CLASSES} ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ''}`}
+      className={`${BASE_CLASSES} ${SIZE_CLASSES[size]} ${VARIANT_CLASSES[variant]}${className ? ` ${className}` : ''}`}
     >
       {loading ? <SpinnerIcon className="h-4 w-4" /> : null}
       {children}

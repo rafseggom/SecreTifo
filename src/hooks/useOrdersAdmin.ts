@@ -32,6 +32,8 @@ export type UseOrdersAdminResult = {
   total: number
   /** The people whose progress flag is not set yet, for the missing list. */
   pending: Participant[]
+  /** All participants sorted: pending first (by joinedAt), then completed (by joinedAt). */
+  allParticipants: Participant[]
 }
 
 export function useOrdersAdmin(): UseOrdersAdminResult {
@@ -65,5 +67,19 @@ export function useOrdersAdmin(): UseOrdersAdminResult {
   const total = list.length
   const pending = list.filter((person) => !person.hasOrder)
 
-  return { loading: participants === null && error === null, error, filled, total, pending }
+  // Sort: pending first (by joinedAt), then completed (by joinedAt)
+  const allParticipants = [
+    ...pending.sort((a, b) => {
+      const aTime = a.joinedAt && typeof a.joinedAt === 'object' && 'toMillis' in a.joinedAt ? (a.joinedAt as { toMillis: () => number }).toMillis() : 0
+      const bTime = b.joinedAt && typeof b.joinedAt === 'object' && 'toMillis' in b.joinedAt ? (b.joinedAt as { toMillis: () => number }).toMillis() : 0
+      return aTime - bTime
+    }),
+    ...list.filter((person) => person.hasOrder).sort((a, b) => {
+      const aTime = a.joinedAt && typeof a.joinedAt === 'object' && 'toMillis' in a.joinedAt ? (a.joinedAt as { toMillis: () => number }).toMillis() : 0
+      const bTime = b.joinedAt && typeof b.joinedAt === 'object' && 'toMillis' in b.joinedAt ? (b.joinedAt as { toMillis: () => number }).toMillis() : 0
+      return aTime - bTime
+    }),
+  ]
+
+  return { loading: participants === null && error === null, error, filled, total, pending, allParticipants }
 }

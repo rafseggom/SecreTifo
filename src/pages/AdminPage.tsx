@@ -21,13 +21,15 @@
  * mixed state; the loading state blocks a second click while the first is in flight.
  */
 import { useState } from 'react'
+import { useSession } from '../session/SessionProvider'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { ParticipantRow } from '../components/ParticipantRow'
+import { ParticipantTableRow } from '../components/ParticipantTableRow'
 import { useOrdersAdmin } from '../hooks/useOrdersAdmin'
-import { listOrdersAdmin } from '../lib/orders'
+import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorCode } from '../lib/orders'
 import { downloadCsv, ordersCsvFilename } from '../lib/download'
 import { buildOrdersExport } from '../domain/exportOrders'
 
@@ -68,10 +70,15 @@ export default function AdminPage() {
 }
 
 function AdminBody({ onRetry }: { onRetry: () => void }) {
-  const { loading, error, filled, total, pending } = useOrdersAdmin()
+  const { loading, error, filled, total, pending, allParticipants } = useOrdersAdmin()
+  const { eventStatus } = useSession()
   const [downloading, setDownloading] = useState(false)
   const [downloadedName, setDownloadedName] = useState('')
   const [downloadError, setDownloadError] = useState('')
+
+  // Liberar state
+  const [liberarError, setLiberarError] = useState<string | null>(null)
+  const [liberarSuccess, setLiberarSuccess] = useState<string | null>(null)
 
   const failure = error ? errorCopy(error) : null
   const downloadFailure = downloadError ? downloadErrorCopy(downloadError) : null
@@ -84,7 +91,6 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
     setDownloadError('')
     try {
       const orders = await listOrdersAdmin()
-      // One calculation of the name, shared by the anchor and the success line below.
       const filename = ordersCsvFilename()
       downloadCsv(filename, buildOrdersExport(orders))
       setDownloadedName(filename)
@@ -98,6 +104,30 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
       setDownloading(false)
     }
   }
+
+  async function handleLiberar(uid: string, name: string) {
+    setLiberarError(null)
+    setLiberarSuccess(null)
+    try {
+      await liberarParticipant(uid)
+      setLiberarSuccess(name)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Algo ha ido mal.'
+      if (Object.values(LIBERAR_ERRORS).includes(errorMessage as LiberarErrorCode)) {
+        setLiberarError(errorMessage)
+      } else if (errorMessage.includes('permission-denied')) {
+        setLiberarError(LIBERAR_ERRORS.PERMISSION_DENIED)
+      } else if (errorMessage.includes('unavailable')) {
+        setLiberarError('Sin conexión. Vuelve a intentarlo cuando recuperes la red.')
+      } else if (errorMessage.includes('resource-exhausted')) {
+        setLiberarError('Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.')
+      } else {
+        setLiberarError('No se ha podido liberar al participante.')
+      }
+    }
+  }
+
+  const showLiberarFor = (hasOrder: boolean) => eventStatus === 'lobby' && !hasOrder
 
   return (
     <Screen title="Panel del Admin">
@@ -209,8 +239,47 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
           </Notice>
         ) : null}
 
+        {liberarSuccess ? (
+          <Notice tone="success">{`${liberarSuccess} ha sido liberado del evento.`}</Notice>
+        ) : null}
+
+        {liberarError ? (
+          <Notice tone="error">{liberarError}</Notice>
+        ) : null}
+
         <p className="text-label text-slate-600">{TRUST_NOTE}</p>
       </div>
+
+      {/* Participantes table */}
+      {!loading && !failure && total > 0 && (
+        <Card className="mt-6 overflow-hidden">
+          <h2 className="text-heading font-semibold text-slate-900 mb-4">Todos los participantes</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" role="table">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Nombre</th>
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Talla</th>
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Pref.</th>
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Proh.</th>
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Estado</th>
+                  <th scope="col" className="px-3 py-2 text-left text-label text-slate-600 font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {allParticipants.map((person) => (
+                  <ParticipantTableRow
+                    key={person.uid}
+                    participant={person}
+                    onLiberar={handleLiberar}
+                    showLiberar={showLiberarFor(person.hasOrder)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </Screen>
   )
 }

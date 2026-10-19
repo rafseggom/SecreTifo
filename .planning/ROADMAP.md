@@ -117,3 +117,19 @@ Plans:
 - [x] 03-03-PLAN.md — Admin Page Participants Table — full table with Liberar action, realtime updates via useOrdersAdmin
 
 **UI hint**: yes
+
+### Phase 4: Privacidad verificada y pulido
+
+**Goal**: Convertir la promesa central del producto en evidencia ejecutable — demostrar contra el Emulator Suite que las reglas hacen ilegible el emparejamiento incluso para el Admin, verificar por fixture que el artefacto de exportación no permite reconstruirlo, y pulir los estados y la ergonomía móvil que el uso real exige.
+**Requirements**: ADMIN-03, SEC-03, SEC-04
+**Depends on:** Phase 3
+**Plans:** 4 plans
+
+Plans:
+**Wave 1** *(parallel)*
+- [ ] 04-01-PLAN.md — Tracer: Rules test harness + first privacy assertion (assignments list denied), full 9-assertion suite, firebase.json rewrite verification
+- [ ] 04-02-PLAN.md — Export fixture test with 4 participants: header, no-name-leak, zero-padded dorsals, UTF-8 BOM, comma/quote escaping, round-trip
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-03-PLAN.md — Shared errorCopy utility + UI states: PreferencesPage loading/error, LobbyPage subscription error, RevealPage loading/empty/error, useMyAssignment enhancement, 7-route audit
+- [ ] 04-04-PLAN.md — SizeGuideModal responsive (cards <sm, table ≥sm, dialog constraints, sticky headers) + README Contrato de Confianza y Privacidad

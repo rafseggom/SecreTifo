@@ -55,3 +55,37 @@ export async function getParticipant(uid: string): Promise<Participant | null> {
   if (!snap.exists()) return null
   return { uid: snap.id, ...(snap.data() as Omit<Participant, 'uid'>) }
 }
+
+/**
+ * OBSERVES one participant document (CR-02), the subscription counterpart of
+ * `getParticipant`. The session needs this because joining writes
+ * `participants/{uid}` *after* the session has already sampled it: without a live
+ * view, a participant who just joined is bounced back to `/preferences` by the
+ * route guard.
+ *
+ * `cb` receives `null` when the document does not exist — including after a delete,
+ * which the collision rollback performs. The caller decides what that means; the
+ * session only ever flips `hasPreferences` to `true`.
+ *
+ * It lives here, not in `SessionProvider`, so no `firebase/*` import escapes
+ * `src/lib/` (T-01-07, IN-01): the rules and every call-site stay auditable as one
+ * unit.
+ */
+export function subscribeParticipant(
+  uid: string,
+  cb: (participant: Participant | null) => void,
+  onFailure?: (code: string) => void,
+): () => void {
+  return onSnapshot(
+    doc(db, 'events', 'main', 'participants', uid),
+    (snap) =>
+      cb(
+        snap.exists()
+          ? { uid: snap.id, ...(snap.data() as Omit<Participant, 'uid'>) }
+          : null,
+      ),
+    (err) => {
+      onFailure?.(err.code)
+    },
+  )
+}

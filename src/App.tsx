@@ -89,7 +89,20 @@ export default function App() {
         />
         <Route
           path="/preferences"
-          element={identityPresent ? <PreferencesPage /> : <Navigate to="/" replace />}
+          element={
+            identityPresent ? (
+              // CR-02: never render the join form for a participant whose document
+              // already exists — the join would answer with a duplicate-name error
+              // about their own name. A joined participant is forwarded by state.
+              hasPreferences ? (
+                <Navigate to={joinedHome} replace />
+              ) : (
+                <PreferencesPage />
+              )
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
         <Route
           path="/lobby"

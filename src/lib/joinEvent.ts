@@ -30,21 +30,26 @@ export const ERR_EVENT_CLOSED = 'El sorteo ya se ha realizado: el grupo está ce
 
 /**
  * The duplicate-name pre-check, shared by S1's form and this file's step 1 so the
- * two can never diverge. It is the step-1 query exactly: one document matching the
- * NORMALISED name, `limit(1)`. The comparison is always on the normalised form —
- * never the original text — and accents are NOT folded (the contract's stated
- * limit). Permitted outside a transaction because the rules allow `list` on
- * participants.
+ * two can never diverge. It is the step-1 query exactly: documents matching the
+ * NORMALISED name. The comparison is always on the normalised form — never the
+ * original text — and accents are NOT folded (the contract's stated limit).
+ * Permitted outside a transaction because the rules allow `list` on participants.
+ *
+ * `excludeUid` is the caller's OWN uid (CR-02): a participant re-submitting their
+ * name is the same person, not a collision. Without it the pre-check answered
+ * «Ese nombre ya está en uso» about the user's own document. `limit(2)` — not 1 —
+ * is what makes the exclusion reliable when the caller and one other person share
+ * the name: one of the two returned documents is then guaranteed to be the other.
  */
-export async function isNameTaken(name: string): Promise<boolean> {
-  const dupe = await firestore.getDocs(
+export async function isNameTaken(name: string, excludeUid?: string): Promise<boolean> {
+  const matches = await firestore.getDocs(
     firestore.query(
       firestore.collection(db, 'events', 'main', 'participants'),
       firestore.where('nameNormalized', '==', normalizeName(name)),
-      firestore.limit(1),
+      firestore.limit(2),
     ),
   )
-  return !dupe.empty
+  return matches.docs.some((document) => document.id !== excludeUid)
 }
 
 export async function joinEvent(
@@ -56,7 +61,8 @@ export async function joinEvent(
 
   // ── Step 1: duplicate-name pre-check, OUTSIDE the transaction, through the
   // shared helper. Permitted because the rules allow `list` on participants.
-  if (await isNameTaken(name)) {
+  // The caller's own document is excluded (CR-02).
+  if (await isNameTaken(name, uid)) {
     throw new Error(ERR_NAME_TAKEN)
   }
 

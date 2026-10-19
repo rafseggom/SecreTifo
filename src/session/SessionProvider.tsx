@@ -4,7 +4,12 @@
  * `useEffect` on mount:
  *  1. resolves the silent anonymous identity (ensureSignedIn),
  *  2. reads `participants/{uid}` to know whether this uid has already joined,
- *  3. subscribes to `events/main` for the live event status.
+ *  3. OBSERVES `participants/{uid}` so a join made after that first read is
+ *     reflected without a reload (CR-02),
+ *  4. subscribes to `events/main` for the live event status.
+ *
+ * Every Firestore access goes through `src/lib/lobby.ts`: no `firebase/*` import
+ * escapes `src/lib/` (T-01-07, IN-01).
  *
  * EVENT-03 ordering: no Firestore read is issued until `uid !== null`, so no query
  * is ever emitted with `request.auth == null`.
@@ -16,10 +21,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { doc, getDoc } from 'firebase/firestore'
-import { db } from '../lib/firebase'
 import { ensureSignedIn, loadIdentity } from '../lib/session'
-import { subscribeEvent } from '../lib/lobby'
+import { getParticipant, subscribeEvent, subscribeParticipant } from '../lib/lobby'
 import type { EventDoc, EventStatus, Role } from '../domain/types'
 
 export type SessionState = {
@@ -47,7 +50,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    let unsubscribe: (() => void) | undefined
+    let unsubscribeEvent: (() => void) | undefined
+    let unsubscribeParticipant: (() => void) | undefined
 
     async function resolveIdentity() {
       try {
@@ -56,17 +60,36 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
         // Only now is a Firestore read safe: uid is non-null, so request.auth is set.
         const stored = loadIdentity()
-        const participantSnap = await getDoc(doc(db, 'events', 'main', 'participants', uid))
+        const participant = await getParticipant(uid)
         if (cancelled) return
 
-        const hasPreferences = participantSnap.exists()
+        const hasPreferences = participant !== null
         const storedName = stored && stored.uid === uid ? stored.name : ''
-        const name = hasPreferences ? (participantSnap.data().name as string) : storedName
+        const name = participant ? participant.name : storedName
 
         setSession((prev) => ({ ...prev, loading: false, uid, name, hasPreferences }))
 
+        // CR-02: the join writes `participants/{uid}` AFTER this effect sampled it, so
+        // the one-shot read above is not enough — a participant who just joined would
+        // be bounced back to `/preferences` by the route guard. A delete (the collision
+        // rollback) must not un-join the session, so only `true` is ever applied.
+        unsubscribeParticipant = subscribeParticipant(
+          uid,
+          (observed) => {
+            if (!observed) return
+            setSession((prev) =>
+              prev.uid === uid
+                ? { ...prev, hasPreferences: true, name: observed.name }
+                : prev,
+            )
+          },
+          // The one-shot read already established a valid `hasPreferences`; a later
+          // subscription failure leaves that last known-good value in place rather
+          // than blanking a working session.
+        )
+
         // The event subscription is mounted only after the identity resolved.
-        unsubscribe = subscribeEvent((event: EventDoc | null) => {
+        unsubscribeEvent = subscribeEvent((event: EventDoc | null) => {
           setSession((prev) => ({
             ...prev,
             eventStatus: event ? event.status : 'lobby',
@@ -84,7 +107,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true
-      if (unsubscribe) unsubscribe()
+      if (unsubscribeParticipant) unsubscribeParticipant()
+      if (unsubscribeEvent) unsubscribeEvent()
     }
   }, [])
 

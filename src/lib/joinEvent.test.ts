@@ -33,7 +33,7 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('./firebase', () => ({ db: {} }))
 
-import { ERR_EVENT_CLOSED, joinEvent } from './joinEvent'
+import { ERR_EVENT_CLOSED, isNameTaken, joinEvent } from './joinEvent'
 
 const PREFS = { size: 'M' as const, likedTeams: '', forbiddenTeams: '' }
 
@@ -102,5 +102,20 @@ describe('joinEvent — escritura de events/main (CR-01, IN-02)', () => {
     await expect(joinEvent('uid-b', 'Bea', PREFS)).rejects.toThrow(ERR_EVENT_CLOSED)
     expect(mocks.tx.set).not.toHaveBeenCalled()
     expect(mocks.tx.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('isNameTaken — la propia identidad no bloquea (CR-02)', () => {
+  it('ignora el documento del propio uid y solo denuncia a otro', async () => {
+    mocks.getDocs.mockResolvedValue({ empty: false, size: 1, docs: [{ id: 'uid-a' }] })
+
+    expect(await isNameTaken('Ana', 'uid-a')).toBe(false)
+    expect(await isNameTaken('Ana', 'uid-b')).toBe(true)
+  })
+
+  it('sin excluir a nadie sigue denunciando cualquier coincidencia (S1)', async () => {
+    mocks.getDocs.mockResolvedValue({ empty: false, size: 1, docs: [{ id: 'uid-a' }] })
+
+    expect(await isNameTaken('Ana')).toBe(true)
   })
 })

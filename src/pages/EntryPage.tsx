@@ -54,7 +54,7 @@ export default function EntryPage() {
     setSubmitting(true)
 
     try {
-      if (await isNameTaken(trimmed)) {
+      if (await isNameTaken(trimmed, uid ?? undefined)) {
         setFieldError(ERR_NAME_TAKEN)
         setSubmitting(false)
         inputRef.current?.focus()

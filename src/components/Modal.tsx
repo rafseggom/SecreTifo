@@ -26,9 +26,13 @@ type ModalProps = {
   open: boolean
   onClose: () => void
   children: ReactNode
+  /** Optional additional className for the dialog element. */
+  className?: string
+  /** Optional max-height override (default: max-h-[85vh]). */
+  maxHeight?: string
 }
 
-export function Modal({ title, open, onClose, children }: ModalProps) {
+export function Modal({ title, open, onClose, children, className, maxHeight = 'max-h-[85vh]' }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -48,9 +52,9 @@ export function Modal({ title, open, onClose, children }: ModalProps) {
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby={titleId}
-      className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40"
+      className={`w-full max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-900 backdrop:bg-slate-900/40 ${className ?? ''}`}
     >
-      <div className="max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+      <div className={`${maxHeight} overflow-y-auto p-4 sm:p-6`}>
         <div className="sticky top-0 z-10 mb-4 flex items-start justify-between gap-4 bg-white pb-2">
           <h2 id={titleId} className="text-heading font-semibold text-slate-900">
             {title}

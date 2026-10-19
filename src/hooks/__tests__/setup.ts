@@ -3,6 +3,7 @@
  * initialization errors when importing modules that depend on firebase.ts
  */
 import { vi } from 'vitest'
+import '@testing-library/jest-dom'
 
 // Mock environment variables before any Firebase modules load
 vi.stubEnv('VITE_FIREBASE_API_KEY', 'test-api-key')

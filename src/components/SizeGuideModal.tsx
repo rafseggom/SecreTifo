@@ -27,7 +27,13 @@ type SizeGuideModalProps = {
 
 export function SizeGuideModal({ open, onClose }: SizeGuideModalProps) {
   return (
-    <Modal title="Guía de Tallas" open={open} onClose={onClose}>
+    <Modal
+      title="Guía de Tallas"
+      open={open}
+      onClose={onClose}
+      className="size-guide-modal"
+      maxHeight="max-h-[80vh]"
+    >
       <div className="flex flex-col gap-6">
         <SizeGuideTable {...FAN_TABLE} />
         <SizeGuideTable {...PLAYER_TABLE} />

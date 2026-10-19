@@ -72,3 +72,26 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* SizeGuideTable responsive */
+.size-guide-cards {
+  @apply block sm:hidden;
+}
+
+.size-guide-table {
+  @apply hidden sm:block;
+}
+
+/* Sticky table headers */
+.size-guide-table thead th {
+  @apply sticky top-0 z-10 bg-white border-b border-slate-200;
+}
+
+/* SizeGuideModal dialog constraints */
+dialog.size-guide-modal {
+  @apply max-h-[80vh] overflow-y-auto;
+}
+
+dialog.size-guide-modal::backdrop {
+  @apply bg-black/50;
+}

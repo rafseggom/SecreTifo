@@ -23,7 +23,18 @@ export default defineConfig({
           name: 'hooks',
           include: ['src/hooks/**/*.{test,spec}.{ts,tsx}'],
           environment: 'jsdom',
+          globals: true,
           setupFiles: ['src/hooks/__tests__/setup.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'components',
+          include: ['src/components/**/*.{test,spec}.{ts,tsx}'],
+          environment: 'jsdom',
+          globals: true,
+          setupFiles: ['src/components/__tests__/setup.ts'],
         },
       },
     ],

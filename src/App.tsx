@@ -31,7 +31,7 @@ import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
 
 export default function App() {
-  const { loading, uid, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
+  const { loading, uid, role, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
     useSession()
   const [identityCleared, setIdentityCleared] = useState(false)
 
@@ -159,7 +159,18 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            identityPresent && hasPreferences ? <AdminPage /> : <Navigate to={home} replace />
+            /*
+              IN-05: the panel is the Admin's surface (UI-SPEC S7). Without the role in
+              the guard, a non-Admin who typed /admin saw the whole panel chrome —
+              progress, the "who is missing" list and a download button that could only
+              fail with permission-denied. No pairing was exposed, but the wrong surface
+              was. The rules remain the authority; this is the matching UX guard.
+            */
+            identityPresent && hasPreferences && role === 'admin' ? (
+              <AdminPage />
+            ) : (
+              <Navigate to={home} replace />
+            )
           }
         />
         <Route path="*" element={<Navigate to={home} replace />} />

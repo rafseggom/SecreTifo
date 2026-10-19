@@ -78,8 +78,19 @@ export default function App() {
       <ErrorBoundary>
         <Screen title="No encontramos tu identidad en este evento.">
           <div className="mt-6">
+            {/*
+              WR-08: the UI-SPEC's body copy (`01-UI-SPEC.md:553`, "Si ya estabas
+              dentro, avisa al Admin") treats "you were already inside" as the benign
+              case, but it is precisely the DEAD END: the orphaned
+              `participants/{oldUid}` still holds the name, so re-entering is answered
+              by the shared pre-check with a duplicate-name error, and no in-app path
+              frees it (the rules grant `delete` to the document's own uid only, and
+              the Admin holds no such grant). The body therefore names the one action
+              that actually resolves it. Deliberate deviation from UI-SPEC §553; the
+              title and the «Volver a entrar» action are kept verbatim.
+            */}
             <Notice tone="error">
-              Vuelve a entrar con tu nombre. Si ya estabas dentro, avisa al Admin.
+              Vuelve a entrar con tu nombre. Si ya está en uso, avisa al Admin para que lo libere.
             </Notice>
           </div>
           {eventStatus === 'drawn' ? (

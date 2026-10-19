@@ -85,9 +85,35 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2
+Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Flujo completo del amigo invisible | 6/6 | In Progress|  |
 | 2. Privacidad verificada y pulido | 0/TBD | Not started | - |
+| 3. Admin login con credenciales .env + ver todos los participantes en panel | 0/3 | Planned | - |
+
+### Phase 3: Admin login con credenciales .env + ver todos los participantes en panel
+
+**Goal**: Añadir autenticación explícita para el Admin mediante credenciales en `.env` (reemplazando el modelo "primer usuario = admin") y extender el panel de Admin para mostrar TODOS los participantes en una tabla con estado de pedido y acciones. El Admin es una persona distinta de los participantes; puede participar en una sesión separada si lo desea.
+**Mode:** mvp
+**Depends on**: Phase 2
+**Requirements**: ADMIN-SETUP-01, ADMIN-SETUP-02, ADMIN-SETUP-03, ADMIN-LOGIN-01, ADMIN-LOGIN-02, ADMIN-LOGIN-03, ADMIN-TABLE-01, ADMIN-TABLE-02, ADMIN-TABLE-03, ADMIN-LIBERAR-01
+**Success Criteria** (what must be TRUE):
+  1. El Admin accede a `/admin/setup` (solo si no existe evento), introduce la clave secreta de `.env`, y crea el evento con su uid anónimo como `adminUid` SIN crear documento de participante.
+  2. El Admin accede a `/admin/login` (solo si existe evento), valida la clave secreta, y la sesión persiste en `localStorage` (`secretkit.adminSecretValidated`) para evitar re-ingreso tras recarga.
+  3. El panel `/admin` muestra una tabla completa de participantes: Nombre | Talla | Pref. | Proh. | Estado (✓/✗) | Acciones (Liberar).
+  4. La tabla ordena pendientes arriba (por joinedAt) y completados abajo.
+  5. El botón "Liberar" solo aparece en `status === 'lobby'` y `!hasOrder`; borra el participante y decrementa `participantCount` en una transacción atómica.
+
+**Plans**: 3/3 plans created
+
+Plans:
+**Wave 1** *(parallel)*
+- [ ] 03-01-PLAN.md — Tracer: Admin Setup Page — secret validation, anonymous sign-in, event creation, redirect to /admin/login
+- [ ] 03-02-PLAN.md — Admin Login Page — secret validation, localStorage persistence, redirect to /admin
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-03-PLAN.md — Admin Page Participants Table — full table with Liberar action, realtime updates via useOrdersAdmin
+
+**UI hint**: yes

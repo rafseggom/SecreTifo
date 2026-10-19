@@ -31,6 +31,15 @@ import type { Participant } from '../domain/types'
 /** Filler for a preference the recipient never declared (D-14): a row, never a gap. */
 const UNSTATED = 'Sin indicar'
 
+/**
+ * WR-05: the recipient's document can legitimately be absent (a partial restore, an
+ * operator delete, or the post-draw window WR-03 closes). `getParticipant` returns
+ * `null` for that case instead of throwing, so it must be recorded as a terminal
+ * state of its own — inferring it from `recipient === null` left the screen on
+ * «Buscando a quién regalas…» forever.
+ */
+const RECIPIENT_NOT_FOUND = 'not-found'
+
 /** S8 taxonomy: the Firestore code maps to one copy, and to whether a retry can help. */
 function errorCopy(code: string): { message: string; canRetry: boolean } {
   if (code === 'permission-denied') {
@@ -76,6 +85,9 @@ function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyP
   const { loading, error, assignment, missing } = useMyAssignment(uid)
   const [recipient, setRecipient] = useState<Participant | null>(null)
   const [recipientError, setRecipientError] = useState('')
+  // The second read is tracked EXPLICITLY (WR-05): `recipient === null` cannot tell
+  // "still in flight" apart from "resolved with no document".
+  const [recipientLoaded, setRecipientLoaded] = useState(false)
 
   useEffect(() => {
     if (!assignment) return
@@ -85,8 +97,13 @@ function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyP
       try {
         const person = await getParticipant(assignment)
         if (cancelled) return
-        setRecipient(person)
-        setRecipientError('')
+        if (person === null) {
+          setRecipientError(RECIPIENT_NOT_FOUND)
+        } else {
+          setRecipient(person)
+          setRecipientError('')
+        }
+        setRecipientLoaded(true)
       } catch (thrown) {
         if (cancelled) return
         const code =
@@ -94,6 +111,7 @@ function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyP
             ? String((thrown as { code: unknown }).code)
             : 'unknown'
         setRecipientError(code)
+        setRecipientLoaded(true)
       }
     })()
 
@@ -102,15 +120,16 @@ function RevealBody({ uid, isAdmin, onGoLobby, onGoAdmin, onRetry }: RevealBodyP
     }
   }, [assignment])
 
-  const code = error ?? (recipientError || null)
+  const code =
+    error ??
+    (recipientError && recipientError !== RECIPIENT_NOT_FOUND ? recipientError : null)
   const failure = code ? errorCopy(code) : null
-  // The second read is still in flight while the assignment resolved but no person has
-  // come back yet (and nothing failed).
-  const pendingRead = loading || (assignment !== null && recipient === null && !recipientError)
+  const recipientMissing = recipientError === RECIPIENT_NOT_FOUND
+  const pendingRead = loading || (assignment !== null && !recipientLoaded && !recipientError)
 
   if (pendingRead) return <RevealLoading />
   if (failure) return <RevealError message={failure.message} canRetry={failure.canRetry} onRetry={onRetry} />
-  if (missing) return <RevealMissing onGoLobby={onGoLobby} />
+  if (missing || recipientMissing) return <RevealMissing onGoLobby={onGoLobby} />
   if (!recipient) return <RevealMissing onGoLobby={onGoLobby} />
 
   return (

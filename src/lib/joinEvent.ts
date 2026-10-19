@@ -75,18 +75,22 @@ export async function joinEvent(
     }
 
     const isFirstUser = !eventSnap.exists()
-    const count = isFirstUser ? 0 : (eventSnap.data().participantCount ?? 0)
 
     if (isFirstUser) {
+      // Bootstrap only. `participantCount` is written EXACTLY ONCE, here, and never
+      // incremented afterwards (CR-01 + IN-02): `events/main` is Admin-only for
+      // every other writer, so a non-Admin joiner must never update it. The lobby
+      // derives the count from `participants.length` (LobbyPage), so the counter is
+      // schema fidelity only and cannot drift on the collision rollback.
       tx.set(eventRef, {
         adminUid: uid,
         status: 'lobby',
         createdAt: firestore.serverTimestamp(),
         participantCount: 1,
       })
-    } else {
-      tx.update(eventRef, { participantCount: count + 1 })
     }
+    // Non-Admins write NOTHING to `events/main`: the rule grants `update` to the
+    // Admin alone, and the draw is the only other writer (it flips `status`).
 
     tx.set(meRef, {
       name,

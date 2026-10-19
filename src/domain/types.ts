@@ -28,7 +28,14 @@ export type Participant = {
 export type EventDoc = {
   adminUid: string
   status: EventStatus
+  /** Write-only audit field: no UI reads it. */
   createdAt: unknown
+  /**
+   * Written ONCE, by the bootstrap `create`, and never incremented (CR-01/IN-02:
+   * `events/main` is Admin-only for every later writer, so a non-Admin joiner may
+   * not bump it). Never read by the UI either — the lobby counts
+   * `participants.length`. Kept for schema fidelity, not for logic.
+   */
   participantCount: number
 }
 

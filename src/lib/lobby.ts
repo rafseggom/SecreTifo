@@ -9,7 +9,7 @@
  * silent drop: a `permission-denied` on the event subscription would otherwise leave
  * the app with no session status and nothing on screen explaining it.
  */
-import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, doc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from './firebase'
 import type { EventDoc, Participant } from '../domain/types'
 
@@ -37,4 +37,21 @@ export function subscribeEvent(
       onFailure?.(err.code)
     },
   )
+}
+
+/**
+ * Reads ONE participant by document id (01-05 Task 3).
+ *
+ * Enumeration on this collection IS legal for an authenticated member, but the reveal
+ * needs a single, known person — one concrete individual, not a list. A query would be
+ * extra work and a subscription would be a connection the screen does not need, so this
+ * is the same document-by-id shape as `getMyAssignment`.
+ *
+ * The two subscriptions above and their error callbacks are untouched: this delta adds
+ * no subscription and does not re-define the existing ones (01-04 already wired them).
+ */
+export async function getParticipant(uid: string): Promise<Participant | null> {
+  const snap = await getDoc(doc(db, 'events', 'main', 'participants', uid))
+  if (!snap.exists()) return null
+  return { uid: snap.id, ...(snap.data() as Omit<Participant, 'uid'>) }
 }

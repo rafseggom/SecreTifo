@@ -142,6 +142,16 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
             {failure.message}
           </Notice>
         </div>
+      ) : filled === 0 ? (
+        // IN-06: the S7 empty state from the approved deck (01-UI-SPEC.md:551), which
+        // previously never rendered — with nobody having ordered yet the panel jumped
+        // straight to the «Faltan N por rellenar» list.
+        <Card className="mt-6">
+          <h2 className="text-heading font-semibold text-slate-900">Todavía no hay ningún pedido.</h2>
+          <p className="mt-2 text-body text-slate-600">
+            Aparecerán aquí según los vayan guardando.
+          </p>
+        </Card>
       ) : pending.length === 0 ? (
         <div className="mt-6">
           <Notice tone="success">Todos los pedidos están guardados.</Notice>

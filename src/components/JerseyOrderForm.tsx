@@ -30,6 +30,10 @@ import type { KitType, OrderInput, Size } from '../domain/types'
 const REQUIRED_COPY = 'Este campo es obligatorio.'
 const EMPTY_VALUE = '—'
 const D16_COPY = 'Player no llega a XXXL. Para esa talla, elige Fan o Retro.'
+const SAVE_FAILED_COPY = 'No hemos podido guardar tu pedido.'
+// IN-06: the deck's offline variant for the order path (01-UI-SPEC.md:555). An offline
+// failure is not the generic save error: nothing was written, and the retry can work.
+const OFFLINE_COPY = 'Sin conexión. El pedido no se ha guardado.'
 
 /** Options come from the single price source, never a literal list. */
 const KIT_OPTIONS = Object.keys(PRICES) as KitType[]
@@ -108,8 +112,14 @@ export function JerseyOrderForm({ recipientSize, recipientName, uid }: JerseyOrd
     try {
       await submitOrder(uid, input)
       setSaved(input)
-    } catch {
-      setSubmitError('No hemos podido guardar tu pedido.')
+    } catch (thrown) {
+      // IN-06: branch on the Firestore code as the other screens do, so a lost connection
+      // is reported as such instead of as a generic failure.
+      const code =
+        thrown instanceof Error && 'code' in thrown
+          ? String((thrown as { code: unknown }).code)
+          : 'unknown'
+      setSubmitError(code === 'unavailable' ? OFFLINE_COPY : SAVE_FAILED_COPY)
     } finally {
       setSubmitting(false)
     }

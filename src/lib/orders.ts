@@ -13,7 +13,7 @@
  */
 import * as firestore from 'firebase/firestore'
 import { db } from './firebase'
-import type { Order, OrderInput } from '../domain/types'
+import type { ExportedOrder, Order, OrderInput } from '../domain/types'
 
 /**
  * Saves the order. Idempotent by construction: the document id is deterministic and
@@ -47,4 +47,37 @@ export async function submitOrder(uid: string, input: OrderInput): Promise<void>
 export async function getMyOrder(uid: string): Promise<Order | null> {
   const snap = await firestore.getDoc(firestore.doc(db, 'events', 'main', 'orders', uid))
   return snap.exists() ? (snap.data() as Order) : null
+}
+
+/**
+ * ADMIN-02 — the ONLY enumeration of orders in the project.
+ *
+ * One read of the order collection, then an EXPLICIT field-by-field projection to the
+ * seven exported fields. The projection is written by naming the fields rather than by
+ * spreading the document: a spread would drag the send stamp into the export type, and an
+ * explicit list is what makes the projection auditable at a glance.
+ *
+ * The enumeration of orders is the Admin's — the server rule grants `list` on this
+ * collection to the Admin alone, so for anyone else this read fails with `permission-denied`
+ * and returns no list at all rather than a trimmed one. The enumeration of the pairing
+ * collection is nobody's, the Admin included.
+ *
+ * The export type has no participant-identity field and no pairing field, so there is no
+ * column to project one into: the privacy guarantee is structural, not a convention.
+ */
+export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
+  const snap = await firestore.getDocs(firestore.collection(db, 'events', 'main', 'orders'))
+
+  return snap.docs.map((document) => {
+    const data = document.data() as Order
+    return {
+      opaqueId: data.opaqueId,
+      type: data.type,
+      team: data.team,
+      season: data.season,
+      printedName: data.printedName,
+      number: data.number,
+      size: data.size,
+    }
+  })
 }

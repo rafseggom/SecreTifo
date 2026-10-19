@@ -37,12 +37,30 @@ const BOM = '\uFEFF'
 /**
  * RFC 4180 quoting, plus a spreadsheet formula-injection guard (Assumption A2).
  *
- * A cell starting with =, +, - or @ is prefixed so the file cannot execute a
- * formula on the vendedor's machine. Then the cell is quoted when it contains the
- * separator, a quote, CR or LF, with internal quotes doubled.
+ * A cell whose first significant character is =, +, - or @ is prefixed so the file
+ * cannot execute a formula on the vendedor's machine. IN-10: whitespace and control
+ * characters are skipped when locating that first character, because Excel and
+ * LibreOffice trim them before parsing — a cell such as `"  =1+1"` or `"\t=cmd"` would
+ * otherwise be evaluated. Then the cell is quoted when it contains the separator, a
+ * quote, CR or LF, with internal quotes doubled.
  */
+const FORMULA_LEAD = new Set(['=', '+', '-', '@'])
+
+/**
+ * The first character of `value` that is neither whitespace nor a control character, or
+ * `''` when there is none. A scan rather than a control-character regex, so the guard
+ * stays free of the `no-control-regex` lint warning.
+ */
+function firstSignificantChar(value: string): string {
+  for (const char of value) {
+    if (char.charCodeAt(0) <= 0x1f || /\s/.test(char)) continue
+    return char
+  }
+  return ''
+}
+
 export function escapeCsvCell(value: string): string {
-  const safe = /^[=+\-@]/.test(value) ? "'" + value : value
+  const safe = FORMULA_LEAD.has(firstSignificantChar(value)) ? "'" + value : value
   const mustQuote =
     safe.includes(SEP) || safe.includes('"') || safe.includes('\r') || safe.includes('\n')
   return mustQuote ? '"' + safe.replace(/"/g, '""') + '"' : safe

@@ -62,6 +62,16 @@ describe('escapeCsvCell — RFC 4180 (ORDER-02)', () => {
     expect(escapeCsvCell('-5')).toBe("'-5")
     expect(escapeCsvCell('Real Betis')).toBe('Real Betis')
   })
+
+  it('neutraliza una fórmula tras espacios o caracteres de control (IN-10)', () => {
+    // Excel/LibreOffice trim before parsing, so these are live formulas elsewhere.
+    expect(escapeCsvCell('  =1+1')).toBe("'  =1+1")
+    expect(escapeCsvCell('\t=cmd')).toBe("'\t=cmd")
+    // CR/LF carry both the guard prefix and the RFC-4180 quoting.
+    expect(escapeCsvCell('\r\n@SUM(A1)')).toBe('"\'\r\n@SUM(A1)"')
+    // A leading space before ordinary text is untouched.
+    expect(escapeCsvCell(' Real Betis')).toBe(' Real Betis')
+  })
 })
 
 describe('la exportación es ciega (SEC-02, ORDER-04, D-20)', () => {

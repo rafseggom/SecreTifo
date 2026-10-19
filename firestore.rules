@@ -29,8 +29,17 @@ service cloud.firestore {
 
       // Write-once adminUid: the create above sets it; this guard is what makes it
       // immutable afterwards. Only the Admin may flip status lobby -> drawn (Pitfall 12).
+      //
+      // WR-04: the transition is FORWARD-ONLY. `drawn` is terminal, so the Admin (via
+      // devtools, or via any future bug) cannot reopen the lobby — reopening would
+      // re-enable joining and make `runDraw`'s idempotence check pass again, after
+      // which a second draw silently overwrites every assignment and orphans the
+      // orders already placed against them.
       allow update: if isAdmin()
-        && request.resource.data.adminUid == resource.data.adminUid;
+        && request.resource.data.adminUid == resource.data.adminUid
+        && (resource.data.status == 'drawn'
+          ? request.resource.data.status == 'drawn'
+          : request.resource.data.status in ['lobby', 'drawn']);
 
       allow delete: if false;
 

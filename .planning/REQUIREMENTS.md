@@ -40,8 +40,8 @@ Requirements for the initial release. Each maps to a roadmap phase.
 
 ### Admin y Exportación (ADMIN)
 
-- [ ] **ADMIN-01**: El Admin ve cuántos participantes han rellenado su pedido y quiénes faltan
-- [ ] **ADMIN-02**: El Admin descarga un archivo .csv (UTF-8 con BOM, separador `;`) con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin incluir quién regala a quién
+- [x] **ADMIN-01**: El Admin ve cuántos participantes han rellenado su pedido y quiénes faltan
+- [x] **ADMIN-02**: El Admin descarga un archivo .csv (UTF-8 con BOM, separador `;`) con camisetas, tallas, tipo (Fan/Player/Retro) y dorsales, sin incluir quién regala a quién
 - [ ] **ADMIN-03**: El Admin no puede leer la colección de asignaciones secretas (verificado por reglas)
 
 ### Privacidad y Verificación (SEC)
@@ -112,8 +112,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORDER-03 | Phase 1 | Complete |
 | ORDER-04 | Phase 1 | Complete |
 | ORDER-05 | Phase 1 | Complete |
-| ADMIN-01 | Phase 1 | Pending |
-| ADMIN-02 | Phase 1 | Pending |
+| ADMIN-01 | Phase 1 | Complete |
+| ADMIN-02 | Phase 1 | Complete |
 | ADMIN-03 | Phase 2 | Pending |
 | SEC-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |

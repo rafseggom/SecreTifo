@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Flujo completo del amigo invisible
-status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-10-19T12:42:07.223Z"
+status: verifying
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-10-19T12:50:56.477Z"
 last_activity: 2026-10-18
 last_activity_desc: Phase 01 execution started
-state_head: 1ee4f6cf3c40805dde6972c35de1259cdd0dab79
+state_head: 58557bbe2989c1d0698694f1ae18f06bf247b508
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 
 Phase: 01 (Flujo completo del amigo invisible) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-18 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 12min | 4 tasks | 14 files |
 | Phase 01 P4 | 11min | 3 tasks | 5 files |
 | Phase 01 P05 | 15min | 3 tasks | 9 files |
+| Phase 01 P06 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,11 @@ Recent decisions affecting current work:
 - [Phase 01]: The reveal reads the pairing only by document id (getMyAssignment -> getParticipant); a query on assignments is broken code, not merely unsafe, because the rules deny list to everyone including the Admin.
 - [Phase 01]: ORDER-04 is a type invariant: OrderInput and ExportedOrder have no field for the giver's or recipient's identity, so the order document cannot carry the pairing by construction.
 - [Phase 01]: The order and the participant's hasOrder flag are written in the same writeBatch, so the Admin's progress and the order cannot disagree (Pitfall 11); the deterministic doc id makes it an idempotent overwrite (D-18).
+- [Phase 01]: El avance del Admin se DERIVA de los documentos de participantes (hasOrder) mediante UNA sola suscripcion en useOrdersAdmin: no hay coleccion de envios, ni recuento paralelo, ni segunda suscripcion (D-19). Los pedidos se leen solo como accion puntual al descargar.
+- [Phase 01]: listOrdersAdmin es la unica enumeracion de pedidos del proyecto: una lectura de la coleccion seguida de una proyeccion EXPLICITA campo a campo a los siete campos exportables. Un spread arrastraria submittedAt al tipo de exportacion y haria la proyeccion inauditable.
+- [Phase 01]: ordersCsvFilename calcula el nombre del archivo en un unico sitio; el manejador lo calcula una vez y el mismo valor alimenta el atributo de descarga y la linea de exito, de modo que el nombre anunciado y el archivo real no pueden divergir. downloadCsv crea y revoca exactamente un objeto URL por descarga (D-21).
+- [Phase 01]: Un fallo de descarga mapea permission-denied a la copia de la taxonomia S8 (No tienes permiso para ver esto., sin reintento) y cualquier otro codigo a No hemos podido generar el archivo. con Reintentar: un impostor ve la taxonomia y nunca la lista, mientras un fallo transitorio sigue siendo reintentable.
+- [Phase 01]: El estado vacio de S7 es el que fija 01-UI-SPEC S7 linea 393 (0 de {total}, barra a cero, descarga deshabilitada y su ayudante); la fila Todavia no hay ningun pedido. del Copywriting Contract no se pinto como tarjeta adicional porque a filled===0 la lista de pendientes ya nombra a todos los participantes.
 
 ### Pending Todos
 
@@ -121,6 +127,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-19T12:42:07.185Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-10-19T12:50:56.438Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None

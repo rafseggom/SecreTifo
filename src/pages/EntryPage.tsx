@@ -1,9 +1,10 @@
 /**
  * S1 — Login/Registro (01-UI-SPEC §S1).
  *
- * Dos modos:
+ * Tres modos:
  * - Usuario Nuevo: nombre + PIN (doble) → preferencias
- * - Login: lista de usuarios existentes → click en tu nombre → PIN → acceso
+ * - Login lista: selecciona de la lista → PIN → acceso
+ * - Login directo: escribe nombre + PIN → acceso (para cuando no hay lista o limpiaste datos)
  *
  * El PIN se hashea y guarda en localStorage hasta que se crea el documento en PreferencesPage.
  */
@@ -18,7 +19,7 @@ import { Notice } from '../components/Notice'
 import { useSession } from '../session/SessionProvider'
 import { markUnlocked, saveIdentity } from '../lib/session'
 import { listParticipants } from '../lib/lobby'
-import { loginParticipantByNameNormalized, ERR_WRONG_PIN, ERR_PROFILE_CLAIMED } from '../lib/joinEvent'
+import { loginParticipant, loginParticipantByNameNormalized, ERR_WRONG_PIN, ERR_PROFILE_CLAIMED } from '../lib/joinEvent'
 import { normalizeName } from '../domain/normalizeName'
 import { isValidPin, sanitizePin, hashPin } from '../domain/pin'
 import type { Participant } from '../domain/types'
@@ -29,26 +30,32 @@ export default function EntryPage() {
   const navigate = useNavigate()
   const { eventStatus, retryIdentity } = useSession()
 
-  // Modo principal: 'choice' | 'register' | 'login-select' | 'login-pin'
-  const [mode, setMode] = useState<'choice' | 'register' | 'login-select' | 'login-pin'>('choice')
+  // Modo principal: 'choice' | 'register' | 'login-select' | 'login-pin' | 'login-direct'
+  const [mode, setMode] = useState<'choice' | 'register' | 'login-select' | 'login-pin' | 'login-direct'>('choice')
 
   // Registro
   const [name, setName] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
 
-  // Login - selección de usuario
+  // Login - selección de usuario (lista)
   const [participants, setParticipants] = useState<Participant[] | null>(null)
   const [selectedNameNormalized, setSelectedNameNormalized] = useState('')
 
-  // Login - PIN
+  // Login - PIN (para modo lista)
   const [loginPin, setLoginPin] = useState('')
+
+  // Login directo - nombre + PIN
+  const [directName, setDirectName] = useState('')
+  const [directPin, setDirectPin] = useState('')
 
   // Errores
   const [nameError, setNameError] = useState('')
   const [pinError, setPinError] = useState('')
   const [confirmError, setConfirmError] = useState('')
   const [loginPinError, setLoginPinError] = useState('')
+  const [directNameError, setDirectNameError] = useState('')
+  const [directPinError, setDirectPinError] = useState('')
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -56,10 +63,11 @@ export default function EntryPage() {
   const pinRef = useRef<HTMLInputElement>(null)
   const confirmRef = useRef<HTMLInputElement>(null)
   const loginPinRef = useRef<HTMLInputElement>(null)
+  const directNameRef = useRef<HTMLInputElement>(null)
+  const directPinRef = useRef<HTMLInputElement>(null)
 
   // Cargar participantes para la lista de login
   useEffect(() => {
-    // No need for uid anymore - we just need the list
     let cancelled = false
 
     void listParticipants()
@@ -89,6 +97,13 @@ export default function EntryPage() {
     clearErrors()
   }
 
+  function goLoginDirect() {
+    setMode('login-direct')
+    setDirectName('')
+    setDirectPin('')
+    clearErrors()
+  }
+
   function goLoginPin(nameNormalized: string) {
     setSelectedNameNormalized(nameNormalized)
     setMode('login-pin')
@@ -106,6 +121,8 @@ export default function EntryPage() {
     setPinError('')
     setConfirmError('')
     setLoginPinError('')
+    setDirectNameError('')
+    setDirectPinError('')
     setFormError('')
   }
 
@@ -129,12 +146,10 @@ export default function EntryPage() {
     setSubmitting(true)
 
     try {
-      // Hash del PIN y guardado en localStorage
       const pinHash = await hashPin(pin)
       const nameNormalized = normalizeName(trimmed)
       saveIdentity({ name: trimmed, nameNormalized, pinHash })
       markUnlocked(nameNormalized)
-      // Refresh session to pick up the new identity
       retryIdentity()
       navigate('/preferences')
     } catch (cause) {
@@ -165,7 +180,6 @@ export default function EntryPage() {
     try {
       const participant = await loginParticipantByNameNormalized(selectedNameNormalized, loginPin)
 
-      // Save identity with PIN hash for future unlocks
       saveIdentity({
         name: participant.name,
         nameNormalized: participant.nameNormalized,
@@ -173,7 +187,6 @@ export default function EntryPage() {
       })
       markUnlocked(participant.nameNormalized)
 
-      // Navigate based on event status
       if (eventStatus === 'drawn') {
         navigate('/reveal')
       } else {
@@ -191,6 +204,56 @@ export default function EntryPage() {
         setLoginPinError(message)
       } else {
         setFormError('No hemos podido entrar. Inténtalo de nuevo.')
+      }
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDirectLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setDirectNameError('')
+    setDirectPinError('')
+    setFormError('')
+
+    const trimmed = directName.trim()
+    const nextNameError = !trimmed || !normalizeName(trimmed) ? 'Escribe tu nombre.' : ''
+    const nextPinError = !isValidPin(directPin) ? 'Escribe tu PIN de 4 a 6 dígitos.' : ''
+
+    setDirectNameError(nextNameError)
+    setDirectPinError(nextPinError)
+
+    if (nextNameError) { directNameRef.current?.focus(); return }
+    if (nextPinError) { directPinRef.current?.focus(); return }
+
+    setSubmitting(true)
+
+    try {
+      const participant = await loginParticipant(trimmed, directPin)
+
+      saveIdentity({
+        name: participant.name,
+        nameNormalized: participant.nameNormalized,
+        pinHash: participant.pinHash,
+      })
+      markUnlocked(participant.nameNormalized)
+
+      if (eventStatus === 'drawn') {
+        navigate('/reveal')
+      } else {
+        navigate('/lobby')
+      }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : ''
+      if (message === ERR_WRONG_PIN) {
+        setDirectPinError('PIN incorrecto. Inténtalo de nuevo.')
+        setDirectPin('')
+        directPinRef.current?.focus()
+      } else if (message === ERR_PROFILE_CLAIMED) {
+        setFormError('Este perfil ya tiene dueño. Contacta al Admin si crees que es un error.')
+      } else if (message.includes('PIN') || message.includes('navegador')) {
+        setDirectPinError(message)
+      } else {
+        setFormError('No hemos podido entrar. ¿Nombre correcto?')
       }
       setSubmitting(false)
     }
@@ -220,7 +283,15 @@ export default function EntryPage() {
             onClick={goLoginSelect}
             disabled={!participants || participants.length === 0}
           >
-            Login
+            Login (seleccionar de lista)
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full py-4 text-lg"
+            onClick={goLoginDirect}
+          >
+            Login (escribir nombre + PIN)
           </Button>
         </Card>
 
@@ -232,6 +303,12 @@ export default function EntryPage() {
             </p>
           </div>
         )}
+
+        <div className="mt-6">
+          <Button type="button" variant="ghost" onClick={() => navigate('/admin/login')}>
+            Acceso Admin
+          </Button>
+        </div>
       </Screen>
     )
   }
@@ -383,7 +460,82 @@ export default function EntryPage() {
     )
   }
 
-  // mode === 'login-pin'
+  if (mode === 'login-direct') {
+    return (
+      <Screen title="Login" titleRole="display">
+        <p className="mt-3 max-w-[36ch] text-body text-pretty text-muted-foreground">
+          Escribe tu nombre y PIN para entrar.
+        </p>
+
+        <Card className="mt-8">
+          <form onSubmit={handleDirectLoginSubmit} noValidate className="flex flex-col gap-5">
+            <Field
+              label="Tu nombre"
+              helper="Tal como te registraste."
+              error={directNameError || undefined}
+            >
+              {({ id, describedBy, invalid }) => (
+                <Input
+                  id={id}
+                  ref={directNameRef}
+                  type="text"
+                  autoComplete="name"
+                  autoFocus
+                  maxLength={40}
+                  enterKeyHint="next"
+                  value={directName}
+                  onChange={(event) => setDirectName(event.target.value)}
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                />
+              )}
+            </Field>
+
+            <Field
+              label="PIN de acceso"
+              helper="El que usaste al registrarte."
+              error={directPinError || undefined}
+            >
+              {({ id, describedBy, invalid }) => (
+                <Input
+                  id={id}
+                  ref={directPinRef}
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  maxLength={6}
+                  enterKeyHint="go"
+                  value={directPin}
+                  onChange={(event) => setDirectPin(sanitizePin(event.target.value))}
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  className="text-center tracking-[0.45em]"
+                />
+              )}
+            </Field>
+
+            {formError ? (
+              <Notice tone="error">
+                {formError}
+              </Notice>
+            ) : null}
+
+            <div className="flex flex-col gap-3">
+              <Button type="submit" variant="primary" loading={submitting} className="w-full">
+                {submitting ? 'Entrando…' : 'Entrar'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={goBackToChoice} className="w-full">
+                Volver
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </Screen>
+    )
+  }
+
+  // mode === 'login-pin' (desde lista)
   const selectedParticipant = participants?.find(p => p.nameNormalized === selectedNameNormalized)
   const selectedName = selectedParticipant?.name ?? 'Usuario'
   const selectedInitial = selectedName.trim().charAt(0).toLocaleUpperCase('es') || '?'

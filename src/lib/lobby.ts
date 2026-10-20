@@ -1,7 +1,8 @@
 /**
  * Realtime reads for the lobby. Ordered by `nameNormalized`.
  *
- * Uses Supabase realtime subscriptions.
+ * Uses Supabase realtime subscriptions with unique channel names to avoid
+ * "cannot add callbacks after subscribe" errors.
  */
 import { supabase } from './supabase'
 import type { EventDoc, Participant } from '../domain/types'
@@ -28,21 +29,27 @@ function toEvent(row: Record<string, unknown>): EventDoc {
   }
 }
 
+// Unique channel names per subscription to avoid conflicts
+function channelName(base: string): string {
+  return `${base}_${Math.random().toString(36).slice(2, 9)}`
+}
+
 export function subscribeParticipants(
   cb: (list: Participant[]) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  const channel = supabase
-    .channel('participants_changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'participants' },
-      () => {
-        // Refetch full list on any change for consistent ordering
-        fetchParticipants().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
-      },
-    )
-    .subscribe()
+  const channel = supabase.channel(channelName('participants'))
+
+  // Add ALL callbacks BEFORE subscribe
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'participants' },
+    () => {
+      fetchParticipants().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
+    },
+  )
+
+  channel.subscribe()
 
   // Initial fetch
   fetchParticipants().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
@@ -66,20 +73,22 @@ export function subscribeEvent(
   cb: (event: EventDoc | null) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  const channel = supabase
-    .channel('event_changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'event' },
-      (payload) => {
-        if (payload.new) {
-          cb(toEvent(payload.new as Record<string, unknown>))
-        } else {
-          cb(null)
-        }
-      },
-    )
-    .subscribe()
+  const channel = supabase.channel(channelName('event'))
+
+  // Add ALL callbacks BEFORE subscribe
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'event' },
+    (payload) => {
+      if (payload.new) {
+        cb(toEvent(payload.new as Record<string, unknown>))
+      } else {
+        cb(null)
+      }
+    },
+  )
+
+  channel.subscribe()
 
   // Initial fetch
   fetchEvent().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
@@ -121,20 +130,22 @@ export function subscribeParticipant(
   cb: (participant: Participant | null) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  const channel = supabase
-    .channel(`participant_${nameNormalized}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'participants', filter: `name_normalized=eq.${nameNormalized}` },
-      (payload) => {
-        if (payload.new) {
-          cb(toParticipant(payload.new as Record<string, unknown>))
-        } else {
-          cb(null)
-        }
-      },
-    )
-    .subscribe()
+  const channel = supabase.channel(channelName(`participant_${nameNormalized}`))
+
+  // Add ALL callbacks BEFORE subscribe
+  channel.on(
+    'postgres_changes',
+    { event: '*', schema: 'public', table: 'participants', filter: `name_normalized=eq.${nameNormalized}` },
+    (payload) => {
+      if (payload.new) {
+        cb(toParticipant(payload.new as Record<string, unknown>))
+      } else {
+        cb(null)
+      }
+    },
+  )
+
+  channel.subscribe()
 
   // Initial fetch
   getParticipant(nameNormalized).then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))

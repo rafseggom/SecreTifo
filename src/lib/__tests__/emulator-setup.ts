@@ -1,24 +1,20 @@
 /**
  * Firestore Emulator test harness — single connection point for all rules tests.
  *
- * This module is loaded once via vitest.config.ts `setupFiles` and provides:
- *   - `testEnv`: the initialized RulesTestEnvironment (authenticated contexts created per test)
- *   - `clearFirestoreData()`: wipes all collections between tests for isolation
- *   - `createTestApp()`: helper to create a Firebase app bound to the emulator
+ * This module is loaded once via the rules-test config and provides:
+ *   - `testEnv`: the initialized RulesTestEnvironment (authenticated contexts per test)
+ *   - `clearFirestoreData()`: wipes all data between tests for isolation
+ *   - seed helpers that write through `withSecurityRulesDisabled`
  *
- * The emulator must be running at localhost:8080 (Firestore) and localhost:9099 (Auth)
- * when tests execute. The CI command `npm run test:rules` starts it via
+ * The emulator must be running at 127.0.0.1:8080 (Firestore) when tests execute.
+ * The CI command `npm run test:rules` starts it via
  * `firebase emulators:exec --only firestore,auth`.
  */
 import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { getFirestore } from 'firebase/firestore'
-import { initializeApp } from 'firebase/app'
 
 type RulesTestEnv = RulesTestEnvironment
 
 let testEnv: RulesTestEnv | null = null
-let emulatorApp: ReturnType<typeof initializeApp> | null = null
-let emulatorDb: ReturnType<typeof getFirestore> | null = null
 
 /**
  * Initializes the test environment against the running Firestore Emulator.
@@ -35,17 +31,6 @@ export async function initTestEnvironment(): Promise<RulesTestEnv> {
     },
   })
 
-  // Create a plain app for direct emulator operations (e.g., seeding events/main)
-  const firebaseConfig = {
-    apiKey: 'test-api-key',
-    authDomain: 'demo-secretkit.firebaseapp.com',
-    projectId: 'demo-secretkit',
-    storageBucket: 'demo-secretkit.appspot.com',
-    appId: '1:1234567890:web:abcdef123456',
-  }
-  emulatorApp = initializeApp(firebaseConfig, 'test-emulator')
-  emulatorDb = getFirestore(emulatorApp)
-
   return testEnv
 }
 
@@ -57,16 +42,6 @@ export function getTestEnv(): RulesTestEnv {
     throw new Error('Test environment not initialized. Call initTestEnvironment() first.')
   }
   return testEnv
-}
-
-/**
- * Returns the emulator Firestore instance for direct writes (e.g., seeding events/main).
- */
-export function getEmulatorDb() {
-  if (!emulatorDb) {
-    throw new Error('Emulator DB not initialized. Call initTestEnvironment() first.')
-  }
-  return emulatorDb
 }
 
 /**
@@ -88,7 +63,9 @@ export function authContext(uid: string) {
 }
 
 /**
- * Creates an authenticated context for the admin UID.
+ * Creates an authenticated context for a participant UID acting as the Admin.
+ * Kept as a named helper for test readability; authorization is no longer UID-based
+ * under the shared-password model.
  */
 export function adminContext(adminUid: string) {
   const env = getTestEnv()
@@ -104,9 +81,23 @@ export function unauthContext() {
 }
 
 /**
+ * Seeds a document with rules disabled. Seeding is a test fixture operation, not
+ * something the app can do: the rules would reject most of these writes.
+ */
+async function seedDoc(path: string[], data: Record<string, unknown>): Promise<void> {
+  const env = getTestEnv()
+  await env.withSecurityRulesDisabled(async (context) => {
+    // `RulesTestContext.firestore()` returns a compat instance; the modular helper
+    // types do not overlap cleanly with it, so use the compat `doc().set()` here.
+    await context.firestore().doc(path.join('/')).set(data)
+  })
+}
+
+/**
  * Seeds the events/main document with the given adminUid and status.
  * Used by tests that need the event document to exist.
- * Call as: seedEventMain(), seedEventMain('lobby'), seedEventMain('drawn'), or seedEventMain('adminuid', 'drawn')
+ * Call as: seedEventMain(), seedEventMain('lobby'), seedEventMain('drawn'), or
+ * seedEventMain('adminuid', 'drawn')
  */
 export async function seedEventMain(
   adminUidOrStatus?: string | 'lobby' | 'drawn',
@@ -119,34 +110,41 @@ export async function seedEventMain(
     ? adminUidOrStatus
     : (statusOrUndefined ?? 'lobby')
 
-  const db = getEmulatorDb()
-  const { doc, setDoc } = await import('firebase/firestore')
-  await setDoc(doc(db, 'events', 'main'), { adminUid, status })
+  await seedDoc(['events', 'main'], { adminUid, status })
+}
+
+const DEFAULT_PARTICIPANT = {
+  name: 'Test User',
+  nameNormalized: 'test user',
+  size: 'M',
+  likedTeams: '',
+  forbiddenTeams: '',
+  hasOrder: false,
 }
 
 /**
- * Seeds a participant document.
+ * Seeds a participant document under events/main/participants.
  */
-export async function seedParticipant(uid: string, data: Record<string, unknown>): Promise<void> {
-  const db = getEmulatorDb()
-  const { doc, setDoc } = await import('firebase/firestore')
-  await setDoc(doc(db, 'participants', uid), data)
+export async function seedParticipant(
+  uid: string,
+  data: Record<string, unknown> = DEFAULT_PARTICIPANT
+): Promise<void> {
+  await seedDoc(['events', 'main', 'participants', uid], data)
 }
 
 /**
- * Seeds an assignment document (giverUid -> recipientUid).
+ * Seeds an assignment document (giverUid -> recipientUid) under events/main/assignments.
  */
 export async function seedAssignment(giverUid: string, recipientUid: string): Promise<void> {
-  const db = getEmulatorDb()
-  const { doc, setDoc } = await import('firebase/firestore')
-  await setDoc(doc(db, 'assignments', giverUid), { recipientUid })
+  await seedDoc(['events', 'main', 'assignments', giverUid], { recipientUid })
 }
 
 /**
- * Seeds an order document.
+ * Seeds an order document under events/main/orders.
  */
-export async function seedOrder(giverUid: string, data: Record<string, unknown>): Promise<void> {
-  const db = getEmulatorDb()
-  const { doc, setDoc } = await import('firebase/firestore')
-  await setDoc(doc(db, 'orders', giverUid), data)
+export async function seedOrder(
+  giverUid: string,
+  data: Record<string, unknown> = { number: '10' }
+): Promise<void> {
+  await seedDoc(['events', 'main', 'orders', giverUid], data)
 }

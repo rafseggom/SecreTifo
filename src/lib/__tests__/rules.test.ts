@@ -1,9 +1,14 @@
 /**
  * Firestore Security Rules Test Suite (SEC-03, ADMIN-03).
  *
- * These 9 assertions verify the privacy and access-control guarantees of the
+ * These assertions verify the privacy and access-control guarantees of the
  * SecretKit app. Each test uses a fresh authenticated context via
  * initializeTestEnvironment and cleans up Firestore data between tests.
+ *
+ * Access-control note: the Admin panel uses a SHARED PASSWORD (a UI gate in the
+ * public bundle), so the rules allow any authenticated member to read orders and
+ * update events/main. The pairing privacy assertions (assignments list denied for
+ * everyone, get only for the giver) remain unchanged and are the core guarantee.
  *
  * The rules under test are in firestore.rules (source of truth). This test
  * file must be run via `npm run test:rules` which starts the Firestore Emulator.
@@ -48,7 +53,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
     const participantDb = authContext(PARTICIPANT_UID).firestore()
-    const assignmentsCol = collection(participantDb, 'assignments')
+    const assignmentsCol = collection(participantDb, 'events', 'main', 'assignments')
 
     await assertFails(getDocs(assignmentsCol))
   })
@@ -59,7 +64,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
     const adminDb = adminContext(ADMIN_UID).firestore()
-    const assignmentsCol = collection(adminDb, 'assignments')
+    const assignmentsCol = collection(adminDb, 'events', 'main', 'assignments')
 
     await assertFails(getDocs(assignmentsCol))
   })
@@ -70,7 +75,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
     const participantDb = authContext(PARTICIPANT_UID).firestore()
-    const assignmentRef = doc(participantDb, 'assignments', PARTICIPANT_UID)
+    const assignmentRef = doc(participantDb, 'events', 'main', 'assignments', PARTICIPANT_UID)
 
     await assertSucceeds(getDoc(assignmentRef))
   })
@@ -81,7 +86,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     await seedAssignment(OTHER_UID, PARTICIPANT_UID)
 
     const participantDb = authContext(PARTICIPANT_UID).firestore()
-    const assignmentRef = doc(participantDb, 'assignments', OTHER_UID)
+    const assignmentRef = doc(participantDb, 'events', 'main', 'assignments', OTHER_UID)
 
     await assertFails(getDoc(assignmentRef))
   })
@@ -92,20 +97,20 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
     await seedOrder(PARTICIPANT_UID)
 
     const adminDb = adminContext(ADMIN_UID).firestore()
-    const ordersCol = collection(adminDb, 'orders')
+    const ordersCol = collection(adminDb, 'events', 'main', 'orders')
 
     await assertSucceeds(getDocs(ordersCol))
   })
 
-  // 6. getDocs(collection(orders)) denied for participant
-  it('denies getDocs(orders) for participant', { timeout: TEST_TIMEOUT }, async () => {
+  // 6. getDocs(collection(orders)) allowed for any authenticated member
+  it('allows getDocs(orders) for a participant (shared password)', { timeout: TEST_TIMEOUT }, async () => {
     await seedEventMain(undefined, undefined)
     await seedOrder(PARTICIPANT_UID)
 
     const participantDb = authContext(PARTICIPANT_UID).firestore()
-    const ordersCol = collection(participantDb, 'orders')
+    const ordersCol = collection(participantDb, 'events', 'main', 'orders')
 
-    await assertFails(getDocs(ordersCol))
+    await assertSucceeds(getDocs(ordersCol))
   })
 
   // 7. create participant only in lobby, own UID
@@ -114,7 +119,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await seedEventMain(undefined, 'lobby')
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', PARTICIPANT_UID)
 
       await assertSucceeds(setDoc(participantRef, {
         name: 'Test User',
@@ -130,7 +135,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await seedEventMain(undefined, 'drawn')
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', PARTICIPANT_UID)
 
       await assertFails(setDoc(participantRef, {
         name: 'Test User',
@@ -146,7 +151,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await seedEventMain(undefined, 'lobby')
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', OTHER_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', OTHER_UID)
 
       await assertFails(setDoc(participantRef, {
         name: 'Test User',
@@ -166,19 +171,19 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await seedParticipant(PARTICIPANT_UID)
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', PARTICIPANT_UID)
 
       await assertSucceeds(updateDoc(participantRef, { hasOrder: true }))
     })
 
-    it('denies update before draw (lobby) without hasOrder change', { timeout: TEST_TIMEOUT }, async () => {
+    it('allows preference update before draw (lobby)', { timeout: TEST_TIMEOUT }, async () => {
       await seedEventMain(undefined, 'lobby')
       await seedParticipant(PARTICIPANT_UID)
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', PARTICIPANT_UID)
 
-      await assertFails(updateDoc(participantRef, { likedTeams: 'New Team' }))
+      await assertSucceeds(updateDoc(participantRef, { likedTeams: 'New Team' }))
     })
 
     it('denies update without hasOrder after draw', { timeout: TEST_TIMEOUT }, async () => {
@@ -186,7 +191,7 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await seedParticipant(PARTICIPANT_UID)
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
-      const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
+      const participantRef = doc(participantDb, 'events', 'main', 'participants', PARTICIPANT_UID)
 
       await assertFails(updateDoc(participantRef, { likedTeams: 'New Team' }))
     })
@@ -212,13 +217,13 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       await assertFails(updateDoc(eventRef, { status: 'lobby' }))
     })
 
-    it('denies participant update events/main', { timeout: TEST_TIMEOUT }, async () => {
+    it('allows any authenticated member to update lobby to drawn (shared password)', { timeout: TEST_TIMEOUT }, async () => {
       await seedEventMain(undefined, 'lobby')
 
       const participantDb = authContext(PARTICIPANT_UID).firestore()
       const eventRef = doc(participantDb, 'events', 'main')
 
-      await assertFails(updateDoc(eventRef, { status: 'drawn' }))
+      await assertSucceeds(updateDoc(eventRef, { status: 'drawn' }))
     })
   })
 })

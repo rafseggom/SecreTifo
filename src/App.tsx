@@ -34,7 +34,7 @@ import AdminLoginPage from './pages/AdminLoginPage'
 import UnlockPage from './pages/UnlockPage'
 
 export default function App() {
-  const { loading, uid, role, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
+  const { loading, uid, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
     useSession()
   const [identityCleared, setIdentityCleared] = useState(false)
   // Bumped after a successful unlock so the gate re-renders without a reload.
@@ -195,24 +195,18 @@ export default function App() {
           path="/admin/setup"
           element={
             /*
-              Admin setup: accessible when NO event exists (eventStatus === null).
-              The `role === 'admin'` arm finishes the hand-off: after the create write,
-              the flag is already stored and the event subscription is the only missing
-              piece. As soon as it arrives, this guard forwards straight to /admin —
-              never through home, and without relying on component state that a reload
-              would discard. A returning organiser without the flag keeps the page
-              (which then shows the "event already exists" panel) instead of looping.
+              Admin setup: accessible while no event exists, and also while the Admin
+              secret has not been validated yet. The second case covers two moments:
+              the hand-off right after creating the event (the local snapshot can
+              arrive before `setDoc` resolves, so unmounting here would lose the flag
+              write) and a returning organiser opening the setup URL instead of the
+              login URL (the page then shows "El evento ya existe").
+              With the event present and the flag stored, go straight to the panel.
             */
-            eventStatus === null ? (
+            eventStatus === null || !isAdminSecretValidated() ? (
               <AdminSetupPage />
-            ) : role === 'admin' ? (
-              isAdminSecretValidated() ? (
-                <Navigate to="/admin" replace />
-              ) : (
-                <AdminSetupPage />
-              )
             ) : (
-              <Navigate to={home} replace />
+              <Navigate to="/admin" replace />
             )
           }
         />
@@ -220,11 +214,9 @@ export default function App() {
           path="/admin/login"
           element={
             /*
-              Admin login: only accessible when event exists (eventStatus !== null)
-              and admin is not yet authenticated. The `role !== 'admin'` condition was
-              removed on purpose: an Admin who lost the localStorage flag (cleared site
-              data, storage eviction) must be able to re-validate the secret instead of
-              being redirected home forever, because `/admin` requires that flag.
+              Admin login: accessible whenever the event exists and the local panel
+              flag is missing. The shared password is the only requirement; the
+              browser's uid no longer matters.
             */
             eventStatus !== null && !isAdminSecretValidated() ? (
               <AdminLoginPage />
@@ -237,16 +229,13 @@ export default function App() {
           path="/admin"
           element={
             /*
-              IN-05: the panel is the Admin's surface (UI-SPEC S7). Without the role in
-              the guard, a non-Admin who typed /admin saw the whole panel chrome —
-              progress, the "who is missing" list and a download button that could only
-              fail with permission-denied. No pairing was exposed, but the wrong surface
-              was. The rules remain the authority; this is the matching UX guard.
-              Per D-11: requires eventExists && adminAuthed && role === 'admin'
-              adminAuthed = isAdminSecretValidated() (localStorage flag)
-              role === 'admin' from SessionProvider (uid === adminUid)
+              IN-05: the panel is the Admin's surface (UI-SPEC S7). The guard is the
+              shared-password flag, not the uid: any browser that entered the secret
+              may open it. Firestore authorizes the panel operations to authenticated
+              members (shared-password model), so this guard is UX, not the authority.
+              Pairing privacy is enforced by the assignments rules and is unchanged.
             */
-            eventStatus !== null && role === 'admin' && isAdminSecretValidated() ? (
+            eventStatus !== null && isAdminSecretValidated() ? (
               <AdminPage />
             ) : (
               <Navigate to={home} replace />

@@ -1,9 +1,9 @@
 /**
- * Admin Login Page — validates the secret and sets localStorage flag for persistence.
+ * Admin Login Page — validates the shared admin secret and sets the localStorage flag.
  *
- * Flow: validate secret → confirm this browser's anonymous uid owns the event →
- * setAdminSecretValidated() → redirect to /admin.
- * The anonymous uid from /admin/setup persists in Firebase Auth (IndexedDB).
+ * Flow: validate secret → setAdminSecretValidated() → redirect to /admin
+ * Any browser with the secret may enter; the browser's anonymous uid is irrelevant
+ * under the shared-password model.
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -12,30 +12,23 @@ import { Card } from '../components/Card'
 import { Field } from '../components/Field'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
-import { Notice } from '../components/Notice'
-import { useSession } from '../session/SessionProvider'
 import { setAdminSecretValidated } from '../lib/session'
 
 const INVALID_SECRET_COPY = 'Clave secreta inválida. Inténtalo de nuevo.'
-const NOT_ADMIN_COPY =
-  'La clave es correcta, pero este navegador no es el del organizador. Abre el panel desde el navegador donde creaste el evento.'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-  const { role } = useSession()
 
   const [secret, setSecret] = useState('')
   const [fieldError, setFieldError] = useState('')
-  const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const trimmed = secret.trim()
     setFieldError('')
-    setFormError('')
 
     if (!trimmed) {
       setFieldError('Escribe la clave secreta.')
@@ -52,16 +45,7 @@ export default function AdminLoginPage() {
 
     setSubmitting(true)
 
-    // The secret identifies the event, while `events/main.adminUid` identifies the
-    // browser. Writing the flag on a different anonymous uid would only bounce the
-    // user home from /admin, so explain the mismatch instead of faking success.
-    if (role !== 'admin') {
-      setFormError(NOT_ADMIN_COPY)
-      setSubmitting(false)
-      return
-    }
-
-    // Valid secret on the organiser's browser: persist the gate and enter.
+    // Valid secret on any browser: persist the gate and enter.
     setAdminSecretValidated()
     navigate('/admin', { replace: true })
   }
@@ -92,19 +76,6 @@ export default function AdminLoginPage() {
               />
             )}
           </Field>
-
-          {formError ? (
-            <Notice
-              tone="error"
-              action={
-                <Button type="submit" variant="secondary" loading={submitting}>
-                  Reintentar
-                </Button>
-              }
-            >
-              {formError}
-            </Notice>
-          ) : null}
 
           <Button type="submit" variant="primary" loading={submitting} className="w-full">
             {submitting ? 'Accediendo…' : 'Acceder'}

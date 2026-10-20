@@ -4,10 +4,10 @@ current_phase: 04
 current_phase_name: Privacidad verificada y pulido
 status: complete
 stopped_at: Completed Phase 04 - Privacidad verificada y pulido
-last_updated: "2026-10-20T10:40:00.000Z"
+last_updated: "2026-10-20T11:20:00.000Z"
 last_activity: 2026-10-20
-last_activity_desc: Quick task «Arreglar las rutas de Admin» completed
-state_head: cde5015
+last_activity_desc: Quick task «Acceso Admin con contraseña compartida» completed
+state_head: 29c8802
 progress:
   total_phases: 3
   completed_phases: 3
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 Phase: 04 (Privacidad verificada y pulido) — COMPLETE
 Plan: 4 of 4
 Status: Phase complete — all plans executed
-Last activity: 2026-10-20 - Quick task «Arreglar las rutas de Admin» completed
+Last activity: 2026-10-20 - Quick task «Acceso Admin con contraseña compartida» completed
 
 Progress: [██████████] 100%
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 |------|----|-------------|--------|
 | 2026-10-20 | 261020-pin-acceso-y-ui | Acceso con PIN, navegación por identidad, «Cambiar nombre» como texto y guía de tallas inline | complete |
 | 2026-10-20 | 261020-fix-rutas-admin | Rutas de Admin: setup accesible sin evento, login recuperable y entrada directa al panel | complete |
+| 2026-10-20 | 261020-admin-clave-compartida | Panel de Admin accesible desde cualquier navegador con la contraseña compartida | complete |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - [Phase 04] 7 rutas auditadas con loading/empty/error states explícitos y taxonomía S8 consistente.
 - [Phase 04] SizeGuideTable responsive: cards <640px (<dl>), table ≥640px (<table> + sticky headers), anomaly badges ámbar inline.
 - [Phase 04] README Contrato de Confianza y Privacidad: 4 subsecciones honestas sobre qué se garantiza, qué no (dueño Firebase ve consola), por qué no hay documento único de emparejamiento, cómo verificar.
+- [Quick 261020] Acceso Admin por contraseña compartida: `VITE_ADMIN_SECRET` es solo una puerta de UI y viaja en el bundle público, así que `canAdmin()` pasa a ser `isSignedIn()` y cualquier miembro autenticado puede leer pedidos, liberar participantes, lanzar el sorteo y escribir `assignments`. `adminUid` sigue inmutable y solo pinta la insignia del creador; la privacidad del emparejamiento (`assignments` sin `list`, `get` solo del giver) no cambia. Riesgo aceptado y documentado en README/.env.example.
 
 ### Pending Todos
 
@@ -149,6 +151,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T10:40:00.000Z
-Stopped at: Quick task «Arreglar las rutas de Admin» completed
+Last session: 2026-10-20T11:20:00.000Z
+Stopped at: Quick task «Acceso Admin con contraseña compartida» completed
 Resume file: None

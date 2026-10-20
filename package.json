@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rules": "firebase emulators:exec --only firestore,auth \"vitest run src/lib/__tests__/rules.test.ts\"",
+    "test:rules": "firebase emulators:exec --only firestore,auth \"vitest run --config vitest.rules.config.ts\"",
     "preview": "vite preview"
   },
   "dependencies": {

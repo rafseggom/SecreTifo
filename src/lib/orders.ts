@@ -57,10 +57,10 @@ export async function getMyOrder(uid: string): Promise<Order | null> {
  * spreading the document: a spread would drag the send stamp into the export type, and an
  * explicit list is what makes the projection auditable at a glance.
  *
- * The enumeration of orders is the Admin's — the server rule grants `list` on this
- * collection to the Admin alone, so for anyone else this read fails with `permission-denied`
- * and returns no list at all rather than a trimmed one. The enumeration of the pairing
- * collection is nobody's, the Admin included.
+ * Under the shared-password model the server rule grants `list` on this collection to any
+ * authenticated member (rules cannot see the UI password), so a participant with devtools
+ * can enumerate the orders. The enumeration of the pairing collection remains nobody's:
+ * no `list` for anyone and `get` only for the giver.
  *
  * The export type has no participant-identity field and no pairing field, so there is no
  * column to project one into: the privacy guarantee is structural, not a convention.

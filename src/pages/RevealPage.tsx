@@ -24,6 +24,7 @@ import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { JerseyOrderForm } from '../components/JerseyOrderForm'
 import { useSession } from '../session/SessionProvider'
+import { isAdminSecretValidated } from '../lib/session'
 import { useMyAssignment } from '../hooks/useMyAssignment'
 import { getParticipant } from '../lib/lobby'
 import { errorCopy } from '../lib/errorCopy'
@@ -43,7 +44,7 @@ const RECIPIENT_NOT_FOUND = 'not-found'
 
 export default function RevealPage() {
   const navigate = useNavigate()
-  const { uid, role } = useSession()
+  const { uid } = useSession()
   const [reloadKey, setReloadKey] = useState(0)
 
   if (!uid) return null
@@ -52,7 +53,7 @@ export default function RevealPage() {
     <RevealBody
       key={reloadKey}
       uid={uid}
-      isAdmin={role === 'admin'}
+      isAdmin={isAdminSecretValidated()}
       onGoAdmin={() => navigate('/admin')}
       onRetry={() => setReloadKey((key) => key + 1)}
     />

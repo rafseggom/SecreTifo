@@ -8,8 +8,8 @@
  *    hook already subscribes to. There is no parallel count and no second subscription:
  *    the advance is never obtained by reading the orders (D-19).
  *  - the screen never touches the pairing collection. The route guard is UX; the authority
- *    is the server rule, which grants the order enumeration to the Admin alone and denies
- *    the pairing enumeration to everyone.
+ *    is the server rule, which (shared-password model) grants the order enumeration to
+ *    any authenticated member and denies the pairing enumeration to everyone.
  *
  * The file is composed exclusively by the pure serialiser (`buildOrdersExport`) and handed
  * to the download utility (`downloadCsv`): this page serialises no cell, formats no header,

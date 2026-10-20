@@ -1,7 +1,7 @@
 /**
  * S4, full version (01-04 Task 3). The realtime roster: the count line, the participant
- * list with its explicit loading/empty/error states, and — for the Admin only — the one
- * action that starts the draw.
+ * list with its explicit loading/empty/error states, and — for a browser that has
+ * validated the shared Admin secret — the one action that starts the draw.
  *
  * The order is whatever the query returns (`nameNormalized`) — never the join timestamp,
  * which is `null` in the local snapshot and would misplace the row the current client just
@@ -22,12 +22,13 @@ import { DrawConfirmDialog } from '../components/DrawConfirmDialog'
 import { useSession } from '../session/SessionProvider'
 import { runDraw } from '../lib/draw'
 import { errorCopy } from '../lib/errorCopy'
+import { isAdminSecretValidated } from '../lib/session'
 // Namespace import keeps the two listener callsites the only textual mention of them.
 import * as lobby from '../lib/lobby'
 import type { Participant } from '../domain/types'
 
 export default function LobbyPage() {
-  const { uid, role, eventStatus } = useSession()
+  const { uid, eventStatus } = useSession()
   const navigate = useNavigate()
 
   const [participants, setParticipants] = useState<Participant[] | null>(null)
@@ -142,7 +143,7 @@ export default function LobbyPage() {
         )}
       </div>
 
-      {role === 'admin' ? (
+      {isAdminSecretValidated() ? (
         <div className="mt-6 flex flex-col gap-3">
           <Button
             type="button"

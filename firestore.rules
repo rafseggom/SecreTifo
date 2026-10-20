@@ -10,10 +10,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Costs one document read per evaluation (Pitfall 19). Accepted at this scale.
-    function isAdmin() {
-      return isSignedIn()
-        && get(/databases/$(database)/documents/events/main).data.adminUid == request.auth.uid;
+    // SHARED-PASSWORD MODEL (accepted risk): the Admin secret is a UI gate that ships
+    // in the public bundle, so Firestore cannot treat it as a credential. Every
+    // authenticated member may perform the Admin operations below; the panel only
+    // shows them after the secret is entered. Pairing privacy is enforced separately
+    // (assignments get/list) and does NOT depend on this function.
+    //
+    // Consequence: a participant with devtools can read orders, liberate participants,
+    // run the draw or write assignments. Accepted for this friends-only event.
+    function canAdmin() {
+      return isSignedIn();
     }
 
     // events/main — a single fixed document; the id is literally "main" (D-04).
@@ -28,14 +34,15 @@ service cloud.firestore {
         && request.resource.data.status == 'lobby';
 
       // Write-once adminUid: the create above sets it; this guard is what makes it
-      // immutable afterwards. Only the Admin may flip status lobby -> drawn (Pitfall 12).
+      // immutable afterwards. Under the shared-password model ANY authenticated member
+      // may flip status lobby -> drawn (the draw must work from any browser).
       //
       // WR-04: the transition is FORWARD-ONLY. `drawn` is terminal, so the Admin (via
       // devtools, or via any future bug) cannot reopen the lobby — reopening would
       // re-enable joining and make `runDraw`'s idempotence check pass again, after
       // which a second draw silently overwrites every assignment and orphans the
       // orders already placed against them.
-      allow update: if isAdmin()
+      allow update: if canAdmin()
         && request.resource.data.adminUid == resource.data.adminUid
         && (resource.data.status == 'drawn'
           ? request.resource.data.status == 'drawn'
@@ -78,7 +85,7 @@ service cloud.firestore {
         // NOTE: uniqueness of nameNormalized CANNOT be expressed in rules — rules cannot
         // query. Enforced client-side, best-effort (Pitfall 3, Open Question 1).
 
-        allow delete: if isSignedIn() && (uid == request.auth.uid || isAdmin()); // own delete (collision rollback) or Admin liberar
+        allow delete: if isSignedIn() && (uid == request.auth.uid || canAdmin()); // own delete (collision rollback) or Admin liberar
       }
 
       // assignments — the pairing lives here, one document per giver, and NOWHERE else
@@ -89,15 +96,16 @@ service cloud.firestore {
         // NOBODY may query the collection — not other participants, not the Admin (D-06).
         // A getDocs() here fails with permission-denied for everyone (Pitfall 4).
         allow list: if false;
-        // Only the draw transaction writes assignments, and only the Admin runs it (D-09).
-        allow create, update: if isAdmin();
+        // Under the shared-password model any authenticated member may write these
+        // through the draw. Reads stay private: list is denied and get is own-only.
+        allow create, update: if canAdmin();
         allow delete: if false;
       }
 
-      // orders — own-or-Admin read; own write; never carries the pairing (D-06, D-18).
+      // orders — own-or-panel read; own write; never carries the pairing (D-06, D-18).
       match /orders/{giverUid} {
-        allow get: if isSignedIn() && (giverUid == request.auth.uid || isAdmin());
-        allow list: if isAdmin();
+        allow get: if isSignedIn() && (giverUid == request.auth.uid || canAdmin());
+        allow list: if canAdmin();
 
         allow create, update: if isSignedIn()
           && giverUid == request.auth.uid

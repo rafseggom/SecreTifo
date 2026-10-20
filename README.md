@@ -62,7 +62,7 @@ VITE_FIREBASE_AUTH_DOMAIN=...
 VITE_FIREBASE_PROJECT_ID=...
 VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_APP_ID=...
-VITE_ADMIN_SECRET=...  # Secreto compartido para acceso Admin (solo UI gate)
+VITE_ADMIN_SECRET=...  # Clave del panel Admin (UI gate; viaja en el bundle público)
 ```
 
 ## Emuladores Firebase (desarrollo)
@@ -131,6 +131,14 @@ src/
 
 - El dueño del proyecto Firebase **SÍ puede** leer Firestore por consola/Admin SDK (saltan reglas por diseño).
 - Cloud Function para sorteo ciego real requiere plan Blaze y backend — fuera de v1.
+- **El panel de Admin usa una contraseña compartida, no una cuenta de servidor.** Cualquier navegador que la introduzca entra al panel. La clave viaja en el bundle público, así que un participante con devtools puede extraerla y leer los pedidos, liberar participantes, lanzar el sorteo o escribir `assignments`. Para un evento entre amigos se acepta; si necesitas aislamiento real, habría que migrar a Firebase Auth con cuenta de Admin.
+
+### Acceso del Admin (contraseña compartida)
+
+- `/admin/setup` crea el evento la primera vez y pide la clave.
+- `/admin/login` abre el panel desde **cualquier navegador** con esa clave.
+- Las reglas de Firestore autorizan las operaciones del panel y del sorteo a cualquier usuario autenticado, porque no pueden ver la contraseña.
+- El emparejamiento **sí sigue privado**: `assignments` no tiene `list` para nadie y `get` solo funciona con el propio uid.
 
 ### Por qué el emparejamiento nunca está en un documento único
 

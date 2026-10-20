@@ -4,7 +4,8 @@
  * Flow: validate secret → ensureSignedIn() → create events/main (adminUid, status=lobby,
  * participantCount=0) → store the Admin flag → the `/admin/setup` route guard forwards
  * to /admin as soon as the session observes the new event. No participant document is
- * created for the admin (D-03).
+ * created for the admin (D-03). The secret is shared: any browser can later log in at
+ * /admin/login with it, regardless of which browser created the event.
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -46,9 +47,9 @@ export default function AdminSetupPage() {
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // A returning organiser (event exists, flag missing) must not see the create form:
-  // `setDoc` against an existing event is a write to a live event, not a create.
-  // The route guard only renders this page for the admin uid in that situation.
+  // An existing event must not be re-created. The route guard renders this page in
+  // that state when the local admin flag is missing, so point the user at the login
+  // instead of showing a form whose `setDoc` would write to a live event.
   // While submitting, keep the loading form: the local snapshot can expose the new
   // event before `setDoc` resolves, and showing the "already exists" panel in that
   // window would be a confusing flash right after creating it.
@@ -56,7 +57,7 @@ export default function AdminSetupPage() {
     return (
       <Screen title="El evento ya existe" titleRole="display">
         <p className="mt-2 text-body text-slate-600">
-          Este navegador es el del organizador. Confirma la clave secreta para entrar al panel.
+          Ya hay un evento creado. Confirma la clave secreta para entrar al panel.
         </p>
 
         <Card className="mt-6">

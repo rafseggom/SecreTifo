@@ -4,9 +4,9 @@ current_phase: 04
 current_phase_name: Privacidad verificada y pulido
 status: complete
 stopped_at: Completed Phase 04 - Privacidad verificada y pulido
-last_updated: "2026-10-20T09:50:00.000Z"
+last_updated: "2026-10-20T10:40:00.000Z"
 last_activity: 2026-10-20
-last_activity_desc: Quick task «Acceso con PIN y pulido de interfaz» completed
+last_activity_desc: Quick task «Arreglar las rutas de Admin» completed
 state_head: cde5015
 progress:
   total_phases: 3
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-17)
 Phase: 04 (Privacidad verificada y pulido) — COMPLETE
 Plan: 4 of 4
 Status: Phase complete — all plans executed
-Last activity: 2026-10-20 - Quick task «Acceso con PIN y pulido de interfaz» completed
+Last activity: 2026-10-20 - Quick task «Arreglar las rutas de Admin» completed
 
 Progress: [██████████] 100%
 
@@ -77,6 +77,7 @@ Progress: [██████████] 100%
 | Date | ID | Description | Status |
 |------|----|-------------|--------|
 | 2026-10-20 | 261020-pin-acceso-y-ui | Acceso con PIN, navegación por identidad, «Cambiar nombre» como texto y guía de tallas inline | complete |
+| 2026-10-20 | 261020-fix-rutas-admin | Rutas de Admin: setup accesible sin evento, login recuperable y entrada directa al panel | complete |
 
 ## Accumulated Context
 
@@ -148,6 +149,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T09:50:00.000Z
-Stopped at: Quick task «Acceso con PIN y pulido de interfaz» completed
+Last session: 2026-10-20T10:40:00.000Z
+Stopped at: Quick task «Arreglar las rutas de Admin» completed
 Resume file: None

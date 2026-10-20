@@ -1,8 +1,10 @@
 /**
  * Admin Setup Page — creates the event with the organiser's anonymous uid as adminUid.
  *
- * Flow: validate secret → ensureSignedIn() → create events/main (adminUid, status=lobby, participantCount=0)
- * Redirects to /admin/login on success. No participant document is created for the admin (D-03).
+ * Flow: validate secret → ensureSignedIn() → create events/main (adminUid, status=lobby,
+ * participantCount=0) → store the Admin flag → the `/admin/setup` route guard forwards
+ * to /admin as soon as the session observes the new event. No participant document is
+ * created for the admin (D-03).
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -12,7 +14,8 @@ import { Field } from '../components/Field'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { Notice } from '../components/Notice'
-import { ensureSignedIn } from '../lib/session'
+import { useSession } from '../session/SessionProvider'
+import { ensureSignedIn, setAdminSecretValidated } from '../lib/session'
 import { db } from '../lib/firebase'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -35,12 +38,35 @@ function errorCopy(code: string): { message: string; canRetry: boolean } {
 
 export default function AdminSetupPage() {
   const navigate = useNavigate()
+  const { eventStatus } = useSession()
 
   const [secret, setSecret] = useState('')
   const [fieldError, setFieldError] = useState('')
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // A returning organiser (event exists, flag missing) must not see the create form:
+  // `setDoc` against an existing event is a write to a live event, not a create.
+  // The route guard only renders this page for the admin uid in that situation.
+  // While submitting, keep the loading form: the local snapshot can expose the new
+  // event before `setDoc` resolves, and showing the "already exists" panel in that
+  // window would be a confusing flash right after creating it.
+  if (eventStatus !== null && !submitting) {
+    return (
+      <Screen title="El evento ya existe" titleRole="display">
+        <p className="mt-2 text-body text-slate-600">
+          Este navegador es el del organizador. Confirma la clave secreta para entrar al panel.
+        </p>
+
+        <Card className="mt-6">
+          <Button variant="primary" className="w-full" onClick={() => navigate('/admin/login')}>
+            Entrar al panel
+          </Button>
+        </Card>
+      </Screen>
+    )
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -76,8 +102,11 @@ export default function AdminSetupPage() {
         participantCount: 0,
       })
 
-      // Success: redirect to /admin/login (D-02 step 2)
-      navigate('/admin/login')
+      // Success: persist the admin gate now (the secret was validated above). The
+      // `/admin/setup` guard forwards to /admin once the session observes the event,
+      // so a reload between the write and that snapshot cannot strand the organiser.
+      // `submitting` stays true until the guard unmounts this page.
+      setAdminSecretValidated()
     } catch (thrown) {
       const code =
         thrown instanceof Error && 'code' in thrown

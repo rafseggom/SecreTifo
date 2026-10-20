@@ -4,9 +4,11 @@
  * `useEffect` on mount:
  *  1. resolves the silent anonymous identity (ensureSignedIn),
  *  2. reads `participants/{uid}` to know whether this uid has already joined,
- *  3. OBSERVES `participants/{uid}` so a join made after that first read is
+ *  3. reads `events/main` once so the first render already knows whether an event
+ *     exists and whether this uid is its Admin (no transient `null` gap),
+ *  4. OBSERVES `participants/{uid}` so a join made after that first read is
  *     reflected without a reload (CR-02),
- *  4. subscribes to `events/main` for the live event status.
+ *  5. subscribes to `events/main` for the live event status.
  *
  * A failed resolution sets `error` (WR-01): the routes must not render, because
  * every route assumes a resolved identity. `retryIdentity()` re-runs the whole
@@ -27,7 +29,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ensureSignedIn, loadIdentity } from '../lib/session'
-import { getParticipant, subscribeEvent, subscribeParticipant } from '../lib/lobby'
+import { getEvent, getParticipant, subscribeEvent, subscribeParticipant } from '../lib/lobby'
 import type { EventDoc, EventStatus, Role } from '../domain/types'
 
 export type SessionState = {
@@ -36,7 +38,12 @@ export type SessionState = {
   name: string
   role: Role
   hasPreferences: boolean
-  eventStatus: EventStatus
+  /**
+   * `null` means there is no `events/main` document yet. `App` uses that to decide
+   * whether `/admin/setup` is the only Admin entry point; collapsing "no event"
+   * into `'lobby'` made the setup route unreachable.
+   */
+  eventStatus: EventStatus | null
   /**
    * WR-01: the identity could not be resolved (sign-in failure or a failed first
    * read). Non-null means NO route may render — the boot error screen owns the UI,
@@ -59,7 +66,7 @@ const INITIAL_STATE: SessionState = {
   name: '',
   role: 'participant',
   hasPreferences: false,
-  eventStatus: 'lobby',
+  eventStatus: null,
   error: null,
 }
 
@@ -80,7 +87,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
         // Only now is a Firestore read safe: uid is non-null, so request.auth is set.
         const stored = loadIdentity()
-        const participant = await getParticipant(uid)
+        // Resolve the event in the same pass. If the session became ready before the
+        // subscription's first snapshot, every event-dependent guard would briefly see
+        // `eventStatus === null` and redirect (notably the Admin routes).
+        const [participant, event] = await Promise.all([getParticipant(uid), getEvent()])
         if (cancelled) return
 
         const hasPreferences = participant !== null
@@ -94,6 +104,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           uid,
           name,
           hasPreferences,
+          // `null` means no event yet, a real state the setup route depends on.
+          eventStatus: event ? event.status : null,
+          role: event && event.adminUid === uid ? 'admin' : 'participant',
         }))
 
         // CR-02: the join writes `participants/{uid}` AFTER this effect sampled it, so
@@ -119,7 +132,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         unsubscribeEvent = subscribeEvent((event: EventDoc | null) => {
           setSession((prev) => ({
             ...prev,
-            eventStatus: event ? event.status : 'lobby',
+            // `null` is a real state: the event has not been created yet (setup).
+            eventStatus: event ? event.status : null,
             role: event && event.adminUid === uid ? 'admin' : 'participant',
           }))
         })

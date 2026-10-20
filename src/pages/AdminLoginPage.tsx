@@ -1,7 +1,8 @@
 /**
  * Admin Login Page — validates the secret and sets localStorage flag for persistence.
  *
- * Flow: validate secret → setAdminSecretValidated() → redirect to /admin
+ * Flow: validate secret → confirm this browser's anonymous uid owns the event →
+ * setAdminSecretValidated() → redirect to /admin.
  * The anonymous uid from /admin/setup persists in Firebase Auth (IndexedDB).
  */
 import { useRef, useState, type FormEvent } from 'react'
@@ -12,18 +13,16 @@ import { Field } from '../components/Field'
 import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { Notice } from '../components/Notice'
-import { isAdminSecretValidated, setAdminSecretValidated } from '../lib/session'
+import { useSession } from '../session/SessionProvider'
+import { setAdminSecretValidated } from '../lib/session'
 
 const INVALID_SECRET_COPY = 'Clave secreta inválida. Inténtalo de nuevo.'
+const NOT_ADMIN_COPY =
+  'La clave es correcta, pero este navegador no es el del organizador. Abre el panel desde el navegador donde creaste el evento.'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
-
-  // If already validated, redirect immediately to /admin (avoid showing login again)
-  if (isAdminSecretValidated()) {
-    navigate('/admin', { replace: true })
-    return null
-  }
+  const { role } = useSession()
 
   const [secret, setSecret] = useState('')
   const [fieldError, setFieldError] = useState('')
@@ -53,7 +52,16 @@ export default function AdminLoginPage() {
 
     setSubmitting(true)
 
-    // Valid secret: set localStorage flag and redirect to /admin
+    // The secret identifies the event, while `events/main.adminUid` identifies the
+    // browser. Writing the flag on a different anonymous uid would only bounce the
+    // user home from /admin, so explain the mismatch instead of faking success.
+    if (role !== 'admin') {
+      setFormError(NOT_ADMIN_COPY)
+      setSubmitting(false)
+      return
+    }
+
+    // Valid secret on the organiser's browser: persist the gate and enter.
     setAdminSecretValidated()
     navigate('/admin', { replace: true })
   }

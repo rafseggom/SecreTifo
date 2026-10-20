@@ -195,11 +195,25 @@ export default function App() {
           path="/admin/setup"
           element={
             /*
-              Admin setup: only accessible when NO event exists (eventStatus === null).
-              The page itself validates the VITE_ADMIN_SECRET against user input.
-              On success, creates events/main with adminUid = anonymous uid and redirects to /admin/login.
+              Admin setup: accessible when NO event exists (eventStatus === null).
+              The `role === 'admin'` arm finishes the hand-off: after the create write,
+              the flag is already stored and the event subscription is the only missing
+              piece. As soon as it arrives, this guard forwards straight to /admin —
+              never through home, and without relying on component state that a reload
+              would discard. A returning organiser without the flag keeps the page
+              (which then shows the "event already exists" panel) instead of looping.
             */
-            eventStatus === null ? <AdminSetupPage /> : <Navigate to={home} replace />
+            eventStatus === null ? (
+              <AdminSetupPage />
+            ) : role === 'admin' ? (
+              isAdminSecretValidated() ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <AdminSetupPage />
+              )
+            ) : (
+              <Navigate to={home} replace />
+            )
           }
         />
         <Route
@@ -207,10 +221,12 @@ export default function App() {
           element={
             /*
               Admin login: only accessible when event exists (eventStatus !== null)
-              and admin is not yet authenticated (no localStorage flag AND role !== 'admin').
-              The page validates VITE_ADMIN_SECRET and sets localStorage flag on success.
+              and admin is not yet authenticated. The `role !== 'admin'` condition was
+              removed on purpose: an Admin who lost the localStorage flag (cleared site
+              data, storage eviction) must be able to re-validate the secret instead of
+              being redirected home forever, because `/admin` requires that flag.
             */
-            eventStatus !== null && !isAdminSecretValidated() && role !== 'admin' ? (
+            eventStatus !== null && !isAdminSecretValidated() ? (
               <AdminLoginPage />
             ) : (
               <Navigate to={home} replace />

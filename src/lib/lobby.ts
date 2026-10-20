@@ -59,6 +59,20 @@ export function subscribeEvent(
 }
 
 /**
+ * One-shot read of `events/main` used during session resolution.
+ *
+ * Without it the session finished loading before the subscription's first snapshot,
+ * so the routes rendered with `eventStatus === null` for a moment and the Admin
+ * guards (`/admin`, `/admin/login`) redirected a legitimate Admin home. Reading the
+ * event first makes the very first render authoritative; the subscription then keeps
+ * it live.
+ */
+export async function getEvent(): Promise<EventDoc | null> {
+  const snap = await getDoc(doc(db, 'events/main'))
+  return snap.exists() ? (snap.data() as EventDoc) : null
+}
+
+/**
  * Reads ONE participant by document id (01-05 Task 3).
  *
  * Enumeration on this collection IS legal for an authenticated member, but the reveal

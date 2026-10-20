@@ -4,7 +4,7 @@
  * Verifies card view (<640px) and table view (≥640px) rendering,
  * anomaly badges, and accessibility attributes.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { SizeGuideTable, FAN_TABLE, PLAYER_TABLE } from '../SizeGuideTable'
 import '@testing-library/jest-dom'
@@ -22,6 +22,10 @@ vi.mock('../../lib/firebase', () => ({
   auth: {},
   db: {},
 }))
+
+beforeAll(() => {
+  // jest-dom matchers are auto-imported via '@testing-library/jest-dom'
+})
 
 describe('SizeGuideTable responsive rendering', () => {
   it('renders table with caption, thead, th scope="col" for desktop', () => {

@@ -10,11 +10,13 @@
  * when tests execute. The CI command `npm run test:rules` starts it via
  * `firebase emulators:exec --only firestore,auth`.
  */
-import { initializeTestEnvironment, RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { getFirestore, clearFirestoreData } from 'firebase/firestore'
+import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
+import { getFirestore } from 'firebase/firestore'
 import { initializeApp } from 'firebase/app'
 
-let testEnv: RulesTestEnvironment | null = null
+type RulesTestEnv = RulesTestEnvironment
+
+let testEnv: RulesTestEnv | null = null
 let emulatorApp: ReturnType<typeof initializeApp> | null = null
 let emulatorDb: ReturnType<typeof getFirestore> | null = null
 
@@ -22,27 +24,23 @@ let emulatorDb: ReturnType<typeof getFirestore> | null = null
  * Initializes the test environment against the running Firestore Emulator.
  * Called once in the global test setup.
  */
-export async function initTestEnvironment(): Promise<RulesTestEnvironment> {
+export async function initTestEnvironment(): Promise<RulesTestEnv> {
   if (testEnv) return testEnv
 
   testEnv = await initializeTestEnvironment({
-    projectId: 'secretkit-test',
+    projectId: 'demo-secretkit',
     firestore: {
       host: '127.0.0.1',
       port: 8080,
-    },
-    auth: {
-      host: '127.0.0.1',
-      port: 9099,
     },
   })
 
   // Create a plain app for direct emulator operations (e.g., seeding events/main)
   const firebaseConfig = {
     apiKey: 'test-api-key',
-    authDomain: 'secretkit-test.firebaseapp.com',
-    projectId: 'secretkit-test',
-    storageBucket: 'secretkit-test.appspot.com',
+    authDomain: 'demo-secretkit.firebaseapp.com',
+    projectId: 'demo-secretkit',
+    storageBucket: 'demo-secretkit.appspot.com',
     appId: '1:1234567890:web:abcdef123456',
   }
   emulatorApp = initializeApp(firebaseConfig, 'test-emulator')
@@ -54,7 +52,7 @@ export async function initTestEnvironment(): Promise<RulesTestEnvironment> {
 /**
  * Returns the initialized test environment. Throws if not initialized.
  */
-export function getTestEnv(): RulesTestEnvironment {
+export function getTestEnv(): RulesTestEnv {
   if (!testEnv) {
     throw new Error('Test environment not initialized. Call initTestEnvironment() first.')
   }
@@ -77,7 +75,7 @@ export function getEmulatorDb() {
  */
 export async function clearFirestoreData(): Promise<void> {
   const env = getTestEnv()
-  await clearFirestoreData(env.firestore())
+  await env.clearFirestore()
 }
 
 /**
@@ -108,8 +106,19 @@ export function unauthContext() {
 /**
  * Seeds the events/main document with the given adminUid and status.
  * Used by tests that need the event document to exist.
+ * Call as: seedEventMain(), seedEventMain('lobby'), seedEventMain('drawn'), or seedEventMain('adminuid', 'drawn')
  */
-export async function seedEventMain(adminUid: string, status: 'lobby' | 'drawn' = 'lobby'): Promise<void> {
+export async function seedEventMain(
+  adminUidOrStatus?: string | 'lobby' | 'drawn',
+  statusOrUndefined?: 'lobby' | 'drawn'
+): Promise<void> {
+  const adminUid = (adminUidOrStatus === 'lobby' || adminUidOrStatus === 'drawn' || adminUidOrStatus === undefined)
+    ? 'adminuid'
+    : adminUidOrStatus
+  const status = (adminUidOrStatus === 'lobby' || adminUidOrStatus === 'drawn')
+    ? adminUidOrStatus
+    : (statusOrUndefined ?? 'lobby')
+
   const db = getEmulatorDb()
   const { doc, setDoc } = await import('firebase/firestore')
   await setDoc(doc(db, 'events', 'main'), { adminUid, status })

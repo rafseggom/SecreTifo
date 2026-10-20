@@ -8,162 +8,101 @@
  * The rules under test are in firestore.rules (source of truth). This test
  * file must be run via `npm run test:rules` which starts the Firestore Emulator.
  */
-import { describe, it, expect, beforeAll, afterEach } from 'vitest'
+import { describe, it, beforeAll, afterEach } from 'vitest'
+
+// Increase timeout for emulator tests (emulator operations are slow)
+const TEST_TIMEOUT = 60000
+
 import {
-  initializeTestEnvironment,
-  RulesTestEnvironment,
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing'
-import { getFirestore, collection, getDocs, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore'
-
-let testEnv: RulesTestEnvironment
-const PROJECT_ID = 'demo-secretkit'
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore'
+import {
+  initTestEnvironment,
+  clearFirestoreData,
+  seedEventMain,
+  seedParticipant,
+  seedAssignment,
+  seedOrder,
+  adminContext,
+  authContext,
+} from './emulator-setup'
 
 const PARTICIPANT_UID = 'participantuid'
 const OTHER_UID = 'otheruid'
 const ADMIN_UID = 'adminuid'
 
 beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: PROJECT_ID,
-    firestore: { host: '127.0.0.1', port: 8080 },
-    auth: { host: '127.0.0.1', port: 9099 },
-  })
+  await initTestEnvironment()
 })
 
 afterEach(async () => {
-  await testEnv.clearFirestore()
+  await clearFirestoreData()
 })
-
-/**
- * Helper to create the events/main document with the admin UID and status.
- * Uses the admin authenticated context (following rules) to ensure
- * cross-document reads in rules can see the document.
- * For 'drawn' status, creates as 'lobby' then updates (forward-only transition).
- */
-async function seedEventMain(status: 'lobby' | 'drawn' = 'lobby'): Promise<void> {
-  const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
-  const eventRef = doc(adminDb, 'events', 'main')
-  await setDoc(eventRef, { adminUid: ADMIN_UID, status: 'lobby' })
-  if (status === 'drawn') {
-    await updateDoc(eventRef, { status: 'drawn' })
-  }
-}
-
-/**
- * Helper to create a participant document.
- * Uses security-rules-disabled context for seeding (participant create rule
- * requires lobby status which we ensure via seedEventMain).
- */
-async function seedParticipant(uid: string, overrides: Record<string, unknown> = {}): Promise<void> {
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore()
-    await setDoc(doc(db, 'participants', uid), {
-      name: 'Test User',
-      nameNormalized: 'test user',
-      size: 'M',
-      likedTeams: '',
-      forbiddenTeams: '',
-      hasOrder: false,
-      ...overrides,
-    })
-  })
-}
-
-/**
- * Helper to create an assignment document.
- * Uses security-rules-disabled context for seeding.
- */
-async function seedAssignment(giverUid: string, recipientUid: string): Promise<void> {
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore()
-    await setDoc(doc(db, 'assignments', giverUid), { recipientUid })
-  })
-}
-
-/**
- * Helper to create an order document.
- * Uses security-rules-disabled context for seeding.
- */
-async function seedOrder(giverUid: string, overrides: Record<string, unknown> = {}): Promise<void> {
-  await testEnv.withSecurityRulesDisabled(async (context) => {
-    const db = context.firestore()
-    await setDoc(doc(db, 'orders', giverUid), {
-      opaqueId: 'opaque-' + giverUid,
-      type: 'Fan',
-      team: 'Real Madrid',
-      season: '2024',
-      printedName: 'Test',
-      number: '10',
-      size: 'M',
-      ...overrides,
-    })
-  })
-}
 
 describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', () => {
   // 1. getDocs(assignments) denied for participant
-  it('denies getDocs(assignments) for participant', async () => {
+  it('denies getDocs(assignments) for participant', { timeout: TEST_TIMEOUT }, async () => {
     await seedEventMain()
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+    const participantDb = authContext(PARTICIPANT_UID).firestore()
     const assignmentsCol = collection(participantDb, 'assignments')
 
     await assertFails(getDocs(assignmentsCol))
   })
 
   // 2. getDocs(assignments) denied for admin
-  it('denies getDocs(assignments) for admin', async () => {
+  it('denies getDocs(assignments) for admin', { timeout: TEST_TIMEOUT }, async () => {
     await seedEventMain()
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
-    const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
+    const adminDb = adminContext(ADMIN_UID).firestore()
     const assignmentsCol = collection(adminDb, 'assignments')
 
     await assertFails(getDocs(assignmentsCol))
   })
 
   // 3. getDoc(doc(assignments, ownUid)) allowed for participant
-  it('allows getDoc own assignment for participant', async () => {
+  it('allows getDoc own assignment for participant', { timeout: TEST_TIMEOUT }, async () => {
     await seedEventMain()
     await seedAssignment(PARTICIPANT_UID, OTHER_UID)
 
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+    const participantDb = authContext(PARTICIPANT_UID).firestore()
     const assignmentRef = doc(participantDb, 'assignments', PARTICIPANT_UID)
 
     await assertSucceeds(getDoc(assignmentRef))
   })
 
   // 4. getDoc(doc(assignments, otherUid)) denied for participant
-  it('denies getDoc other participant assignment for participant', async () => {
+  it('denies getDoc other participant assignment for participant', { timeout: TEST_TIMEOUT }, async () => {
     await seedEventMain()
     await seedAssignment(OTHER_UID, PARTICIPANT_UID)
 
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+    const participantDb = authContext(PARTICIPANT_UID).firestore()
     const assignmentRef = doc(participantDb, 'assignments', OTHER_UID)
 
     await assertFails(getDoc(assignmentRef))
   })
 
   // 5. getDocs(collection(orders)) allowed for admin
-  it('allows getDocs(orders) for admin', async () => {
-    await seedEventMain()
+  it('allows getDocs(orders) for admin', { timeout: TEST_TIMEOUT }, async () => {
+    await seedEventMain(undefined, undefined)
     await seedOrder(PARTICIPANT_UID)
 
-    const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
+    const adminDb = adminContext(ADMIN_UID).firestore()
     const ordersCol = collection(adminDb, 'orders')
 
     await assertSucceeds(getDocs(ordersCol))
   })
 
   // 6. getDocs(collection(orders)) denied for participant
-  it('denies getDocs(orders) for participant', async () => {
-    await seedEventMain()
+  it('denies getDocs(orders) for participant', { timeout: TEST_TIMEOUT }, async () => {
+    await seedEventMain(undefined, undefined)
     await seedOrder(PARTICIPANT_UID)
 
-    const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+    const participantDb = authContext(PARTICIPANT_UID).firestore()
     const ordersCol = collection(participantDb, 'orders')
 
     await assertFails(getDocs(ordersCol))
@@ -171,10 +110,10 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
 
   // 7. create participant only in lobby, own UID
   describe('participant create rules', () => {
-    it('allows create in lobby with own UID', async () => {
-      await seedEventMain('lobby')
+    it('allows create in lobby with own UID', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'lobby')
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
 
       await assertSucceeds(setDoc(participantRef, {
@@ -187,10 +126,10 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       }))
     })
 
-    it('denies create in drawn status', async () => {
-      await seedEventMain('drawn')
+    it('denies create in drawn status', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'drawn')
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
 
       await assertFails(setDoc(participantRef, {
@@ -203,10 +142,10 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
       }))
     })
 
-    it('denies create with wrong UID', async () => {
-      await seedEventMain('lobby')
+    it('denies create with wrong UID', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'lobby')
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', OTHER_UID)
 
       await assertFails(setDoc(participantRef, {
@@ -222,31 +161,31 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
 
   // 8. update participant only hasOrder after draw
   describe('participant update rules', () => {
-    it('allows update hasOrder after draw', async () => {
-      await seedEventMain('drawn')
+    it('allows update hasOrder after draw', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'drawn')
       await seedParticipant(PARTICIPANT_UID)
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
 
       await assertSucceeds(updateDoc(participantRef, { hasOrder: true }))
     })
 
-    it('denies update before draw (lobby) without hasOrder change', async () => {
-      await seedEventMain('lobby')
+    it('denies update before draw (lobby) without hasOrder change', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'lobby')
       await seedParticipant(PARTICIPANT_UID)
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
 
       await assertFails(updateDoc(participantRef, { likedTeams: 'New Team' }))
     })
 
-    it('denies update without hasOrder after draw', async () => {
-      await seedEventMain('drawn')
+    it('denies update without hasOrder after draw', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'drawn')
       await seedParticipant(PARTICIPANT_UID)
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const participantRef = doc(participantDb, 'participants', PARTICIPANT_UID)
 
       await assertFails(updateDoc(participantRef, { likedTeams: 'New Team' }))
@@ -255,28 +194,28 @@ describe('Firestore Security Rules — Privacy Assertions (SEC-03, ADMIN-03)', (
 
   // 9. update events/main only admin, status forward-only (lobby→drawn)
   describe('events/main update rules', () => {
-    it('allows admin to update lobby to drawn', async () => {
-      await seedEventMain('lobby')
+    it('allows admin to update lobby to drawn', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'lobby')
 
-      const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
+      const adminDb = adminContext(ADMIN_UID).firestore()
       const eventRef = doc(adminDb, 'events', 'main')
 
       await assertSucceeds(updateDoc(eventRef, { status: 'drawn' }))
     })
 
-    it('denies admin update drawn to lobby (forward-only)', async () => {
-      await seedEventMain('drawn')
+    it('denies admin update drawn to lobby (forward-only)', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'drawn')
 
-      const adminDb = testEnv.authenticatedContext(ADMIN_UID).firestore()
+      const adminDb = adminContext(ADMIN_UID).firestore()
       const eventRef = doc(adminDb, 'events', 'main')
 
       await assertFails(updateDoc(eventRef, { status: 'lobby' }))
     })
 
-    it('denies participant update events/main', async () => {
-      await seedEventMain('lobby')
+    it('denies participant update events/main', { timeout: TEST_TIMEOUT }, async () => {
+      await seedEventMain(undefined, 'lobby')
 
-      const participantDb = testEnv.authenticatedContext(PARTICIPANT_UID).firestore()
+      const participantDb = authContext(PARTICIPANT_UID).firestore()
       const eventRef = doc(participantDb, 'events', 'main')
 
       await assertFails(updateDoc(eventRef, { status: 'drawn' }))

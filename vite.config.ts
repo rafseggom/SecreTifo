@@ -8,20 +8,16 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
     environment: 'node',
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: [],
     globals: false,
-    setupFiles: ['src/lib/__tests__/emulator-setup.ts'],
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
+    // pool: 'threads', // default
     projects: [
       {
         extends: true,
         test: {
           name: 'hooks',
           include: ['src/hooks/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['src/lib/**'],
           environment: 'jsdom',
           globals: true,
           setupFiles: ['src/hooks/__tests__/setup.ts'],
@@ -32,11 +28,21 @@ export default defineConfig({
         test: {
           name: 'components',
           include: ['src/components/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['src/lib/**'],
           environment: 'jsdom',
           globals: true,
           setupFiles: ['src/components/__tests__/setup.ts'],
         },
       },
-    ],
+      {
+        extends: true,
+        test: {
+          name: 'domain',
+          include: ['src/domain/**/*.{test,spec}.{ts,tsx}'],
+          environment: 'node',
+          globals: false,
+        },
+      },
+      ],
   },
 })

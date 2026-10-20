@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "1124658391bd0e938904d08fca1be72eacfd7492",
+    "indexed_at": "2026-10-19T23:07:27Z",
+    "project": "SecreTifo",
+    "nodes": 1369,
+    "edges": 1898,
+    "original_size": 4128768,
+    "compressed_size": 656318,
+    "compression_level": 9
+}

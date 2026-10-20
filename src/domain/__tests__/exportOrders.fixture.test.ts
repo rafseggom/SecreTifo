@@ -10,10 +10,10 @@ import { buildOrdersExport, EXPORT_HEADERS, escapeCsvCell } from '../exportOrder
 import type { ExportedOrder } from '../types'
 
 const FIXTURE_ORDERS: ExportedOrder[] = [
-  { opaqueId: 'opaque-1', type: 'Fan', team: 'Real Madrid', season: '2024', printedName: 'José', number: '9', size: 'M' },
-  { opaqueId: 'opaque-2', type: 'Player', team: 'Atlético, SA', season: '2023', printedName: 'María', number: '09', size: 'L' },
-  { opaqueId: 'opaque-3', type: 'Retro', team: 'Barça "Fan"', season: '2025', printedName: "O'Connor", number: '100', size: 'S' },
-  { opaqueId: 'opaque-4', type: 'Fan', team: 'Valencia CF', season: '2024', printedName: 'Juan Pérez', number: '007', size: 'XXL' },
+  { opaqueId: 'opaque-1', type: 'Fan', team: 'Real Madrid', season: '2024', printedName: 'José', number: '9', size: 'M', orderText: 'Fan Real Madrid 2024 M 9 - url + info' },
+  { opaqueId: 'opaque-2', type: 'Player', team: 'Atlético, SA', season: '2023', printedName: 'María', number: '09', size: 'L', orderText: 'Player Atlético, SA 2023 L 09 - url + info' },
+  { opaqueId: 'opaque-3', type: 'Retro', team: 'Barça "Fan"', season: '2025', printedName: "O'Connor", number: '100', size: 'S', orderText: 'Retro Barça "Fan" 2025 S 100 - url + info' },
+  { opaqueId: 'opaque-4', type: 'Fan', team: 'Valencia CF', season: '2024', printedName: 'Juan Pérez', number: '007', size: 'XXL', orderText: 'Fan Valencia CF 2024 XXL 007 - url + info' },
 ]
 
 /**
@@ -77,7 +77,7 @@ describe('buildOrdersExport — fixture test (SEC-04, D-04/D-05)', () => {
     const dataPart = csv.slice(1).replace(/\r\n/g, '\n') // skip BOM
     const lines = dataPart.split('\n').filter(l => l)
     for (const line of lines) {
-      expect(line.split(';').length).toBe(7)
+      expect(line.split(';').length).toBe(8)
     }
   })
 
@@ -125,6 +125,7 @@ describe('buildOrdersExport — fixture test (SEC-04, D-04/D-05)', () => {
       expect(row[4]).toBe(fixture.printedName)
       expect(row[5]).toBe(fixture.number)
       expect(row[6]).toBe(fixture.size)
+      expect(row[7]).toBe(fixture.orderText)
     }
   })
 })

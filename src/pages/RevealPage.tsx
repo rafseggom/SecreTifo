@@ -148,8 +148,6 @@ function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogi
       <section className="mt-8 flex flex-col gap-4">
         <h2 className="text-heading font-semibold text-slate-900">Tu pedido</h2>
         <JerseyOrderForm
-          recipientSize={recipient.size}
-          recipientName={recipient.name}
           giverNameNormalized={nameNormalized}
         />
       </section>

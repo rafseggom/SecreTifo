@@ -49,15 +49,19 @@ export type Order = {
   size: Size
   opaqueId: string
   submittedAt: string
+  /** Texto libre del pedido (plantilla rellenada por el usuario) */
+  orderText?: string
 }
 
 export type OrderInput = {
-  type: KitType
-  team: string
-  season: string
-  printedName: string
-  number: string
-  size: Size
+  type?: KitType
+  team?: string
+  season?: string
+  printedName?: string
+  number?: string
+  size?: Size
+  /** Texto libre del pedido (plantilla rellenada por el usuario) */
+  orderText?: string
 }
 
 /**
@@ -82,4 +86,6 @@ export type ExportedOrder = {
   printedName: string
   number: string
   size: Size
+  /** Texto libre del pedido (plantilla rellenada por el usuario) */
+  orderText?: string
 }

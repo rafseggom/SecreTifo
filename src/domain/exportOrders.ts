@@ -28,6 +28,7 @@ export const EXPORT_HEADERS = [
   'Nombre serigrafiado',
   'Dorsal',
   'Talla',
+  'Pedido (texto libre)',
 ] as const
 
 const SEP = ';'
@@ -71,7 +72,7 @@ export function buildOrdersExport(orders: ExportedOrder[]): string {
   const rows = [
     EXPORT_HEADERS.join(SEP),
     ...orders.map((o) =>
-      [o.opaqueId, o.type, o.team, o.season, o.printedName, o.number, o.size]
+      [o.opaqueId, o.type, o.team, o.season, o.printedName, o.number, o.size, o.orderText ?? '']
         .map(escapeCsvCell)
         .join(SEP),
     ),
@@ -82,11 +83,13 @@ export function buildOrdersExport(orders: ExportedOrder[]): string {
 /**
  * Builds an anonymous gift list for the .txt download.
  * One line per gift, no participant identity, no pairing info.
- * Format: "Tipo · Equipo · Temporada · Nombre · Dorsal · Talla"
+ * Uses the user's free-text order if available, otherwise falls back to structured fields.
  */
 export function buildGiftsTxtExport(orders: ExportedOrder[]): string {
   const lines = orders.map((o) =>
-    `${o.type} · ${o.team} · ${o.season} · ${o.printedName} · ${o.number} · ${o.size}`
+    o.orderText?.trim()
+      ? o.orderText
+      : `${o.type} · ${o.team} · ${o.season} · ${o.printedName} · ${o.number} · ${o.size}`
   )
   return lines.join('\n') + '\n'
 }

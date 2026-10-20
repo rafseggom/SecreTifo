@@ -32,14 +32,15 @@ export async function submitOrder(giverNameNormalized: string, input: OrderInput
   // Upsert order
   const { error: orderError } = await supabase.from('orders').upsert({
     giver_name_normalized: giverNameNormalized,
-    type: input.type,
-    team: input.team,
-    season: input.season,
-    printed_name: input.printedName,
-    number: input.number,
-    size: input.size,
+    type: input.type ?? '',
+    team: input.team ?? '',
+    season: input.season ?? '',
+    printed_name: input.printedName ?? '',
+    number: input.number ?? '',
+    size: input.size ?? 'M',
     opaque_id: opaqueId,
     submitted_at: submittedAt,
+    order_text: input.orderText ?? '',
   })
   if (orderError) throw orderError
 
@@ -73,6 +74,7 @@ export async function getMyOrder(giverNameNormalized: string): Promise<Order | n
     size: data.size,
     opaqueId: data.opaque_id,
     submittedAt: data.submitted_at,
+    orderText: data.order_text,
   }
 }
 
@@ -99,6 +101,7 @@ export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
     printedName: row.printed_name,
     number: row.number,
     size: row.size,
+    orderText: row.order_text,
   }))
 }
 

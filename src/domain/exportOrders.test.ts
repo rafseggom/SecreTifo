@@ -16,6 +16,7 @@ const base: ExportedOrder = {
   printedName: 'García',
   number: '09',
   size: 'L',
+  orderText: 'Fan Real Betis 2024/25 L 09 - url + info',
 }
 
 describe('buildOrdersExport — el formato del archivo (D-20, D-21)', () => {
@@ -24,7 +25,7 @@ describe('buildOrdersExport — el formato del archivo (D-20, D-21)', () => {
     expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(csv.split('\r\n')[0]).toBe('\uFEFF' + EXPORT_HEADERS.join(';'))
     expect(csv.split('\r\n')[0]).toBe(
-      '\uFEFF' + 'ID de pedido;Tipo;Equipo;Temporada;Nombre serigrafiado;Dorsal;Talla',
+      '\uFEFF' + 'ID de pedido;Tipo;Equipo;Temporada;Nombre serigrafiado;Dorsal;Talla;Pedido (texto libre)',
     )
     expect(csv.endsWith('\r\n')).toBe(true)
     expect(EXPORT_HEADERS).toEqual([
@@ -35,6 +36,7 @@ describe('buildOrdersExport — el formato del archivo (D-20, D-21)', () => {
       'Nombre serigrafiado',
       'Dorsal',
       'Talla',
+      'Pedido (texto libre)',
     ])
   })
 
@@ -75,8 +77,8 @@ describe('escapeCsvCell — RFC 4180 (ORDER-02)', () => {
 })
 
 describe('la exportación es ciega (SEC-02, ORDER-04, D-20)', () => {
-  it('tiene siete columnas y ninguna de identidad ni de precio', () => {
-    expect(EXPORT_HEADERS).toHaveLength(7)
+  it('tiene ocho columnas y ninguna de identidad ni de precio', () => {
+    expect(EXPORT_HEADERS).toHaveLength(8)
     const csv = buildOrdersExport([base, { ...base, opaqueId: 'c3d4', type: 'Retro' }])
     expect(csv).not.toContain('giverUid')
     expect(csv).not.toContain('recipientUid')

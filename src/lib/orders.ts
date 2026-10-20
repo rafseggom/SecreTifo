@@ -1,46 +1,26 @@
 /**
  * ORDER-02 / ORDER-04 / ORDER-05 — the order write path.
  *
- * ORDER-04 is STRUCTURAL, not a writing convention: the document is composed of the
- * form's input plus the opaque id and the send stamp, and nothing else. The input
- * type has nowhere to put the giver's or the recipient's identity, and neither does
- * the exported projection — so no later executor can "complete" the document without
- * breaking a type. That absence is what makes the order incapable of revealing the
- * pairing, not an omission to be filled in.
- *
- * CHANGED: Order rows are now keyed by giver's nameNormalized (stable identity).
- *
- * The Supabase client is imported so the upsert and its commit stay the only
- * textual mention of them here.
+ * Simplified: only order_text + opaque_id + submitted_at + giver_name_normalized.
+ * No structured fields, no CHECK constraints.
  */
 import { supabase } from './supabase'
 import type { ExportedOrder, Order, OrderInput } from '../domain/types'
 
 /**
  * Saves the order. Idempotent by construction: the row id is deterministic and
- * derived from the giver's nameNormalized, so a double tap — or a retry after `Reintentar` — overwrites
- * the same row instead of creating a duplicate (D-18).
- *
- * The order and the participant's progress flag are written in the SAME batch, so the
- * Admin's progress (wave 6) and the order can never disagree: there is no instant in
- * which one is written and the other is not (Pitfall 11).
+ * derived from the giver's nameNormalized.
  */
 export async function submitOrder(giverNameNormalized: string, input: OrderInput): Promise<void> {
   const opaqueId = crypto.randomUUID()
   const submittedAt = new Date().toISOString()
 
-  // Upsert order
+  // Upsert order - only the fields that exist in the simplified schema
   const { error: orderError } = await supabase.from('orders').upsert({
     giver_name_normalized: giverNameNormalized,
-    type: input.type ?? '',
-    team: input.team ?? '',
-    season: input.season ?? '',
-    printed_name: input.printedName ?? '',
-    number: input.number ?? '',
-    size: input.size ?? 'M',
     opaque_id: opaqueId,
     submitted_at: submittedAt,
-    order_text: input.orderText ?? '',
+    order_text: input.orderText,
   })
   if (orderError) throw orderError
 
@@ -68,12 +48,6 @@ export async function getMyOrder(giverNameNormalized: string): Promise<Order | n
   if (!data) return null
 
   return {
-    type: data.type,
-    team: data.team,
-    season: data.season,
-    printedName: data.printed_name,
-    number: data.number,
-    size: data.size,
     opaqueId: data.opaque_id,
     submittedAt: data.submitted_at,
     orderText: data.order_text,
@@ -83,13 +57,8 @@ export async function getMyOrder(giverNameNormalized: string): Promise<Order | n
 /**
  * ADMIN-02 — the ONLY enumeration of orders in the project.
  *
- * One read of the order table, then an EXPLICIT field-by-field projection to the
- * seven exported fields. The projection is written by naming the fields rather than by
- * spreading the row: a spread would drag the send stamp into the export type, and an
- * explicit list is what makes the projection auditable at a glance.
- *
- * The export type has no participant-identity field and no pairing field, so there is no
- * column to project one into: the privacy guarantee is structural, not a convention.
+ * One read of the order table, then projection to exported fields.
+ * The export type has no participant-identity field and no pairing field.
  */
 export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
   const { data, error } = await supabase.from('orders').select('*')
@@ -97,12 +66,6 @@ export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
 
   return (data ?? []).map((row) => ({
     opaqueId: row.opaque_id,
-    type: row.type,
-    team: row.team,
-    season: row.season,
-    printedName: row.printed_name,
-    number: row.number,
-    size: row.size,
     orderText: row.order_text,
   }))
 }

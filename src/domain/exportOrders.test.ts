@@ -10,12 +10,6 @@ import type { ExportedOrder } from './types'
  */
 const base: ExportedOrder = {
   opaqueId: 'a1b2',
-  type: 'Fan',
-  team: 'Real Betis',
-  season: '2024/25',
-  printedName: 'García',
-  number: '09',
-  size: 'L',
   orderText: 'Fan Real Betis 2024/25 L 09 - url + info',
 }
 
@@ -25,24 +19,13 @@ describe('buildOrdersExport — el formato del archivo (D-20, D-21)', () => {
     expect(csv.startsWith('\uFEFF')).toBe(true)
     expect(csv.split('\r\n')[0]).toBe('\uFEFF' + EXPORT_HEADERS.join(';'))
     expect(csv.split('\r\n')[0]).toBe(
-      '\uFEFF' + 'ID de pedido;Tipo;Equipo;Temporada;Nombre serigrafiado;Dorsal;Talla;Pedido (texto libre)',
+      '\uFEFF' + 'ID de pedido;Pedido (texto libre)',
     )
     expect(csv.endsWith('\r\n')).toBe(true)
     expect(EXPORT_HEADERS).toEqual([
       'ID de pedido',
-      'Tipo',
-      'Equipo',
-      'Temporada',
-      'Nombre serigrafiado',
-      'Dorsal',
-      'Talla',
       'Pedido (texto libre)',
     ])
-  })
-
-  it('preserva los dorsales con ceros a la izquierda (D-15)', () => {
-    expect(buildOrdersExport([{ ...base, number: '09' }])).toContain(';09;')
-    expect(buildOrdersExport([{ ...base, number: '100' }])).toContain(';100;')
   })
 })
 
@@ -54,7 +37,6 @@ describe('escapeCsvCell — RFC 4180 (ORDER-02)', () => {
 
   it('respeta los acentos y deja intacto un valor normal', () => {
     expect(escapeCsvCell('Peña')).toBe('Peña')
-    expect(buildOrdersExport([{ ...base, team: 'Peña;FC' }])).toContain('"Peña;FC"')
   })
 
   it('neutraliza una celda que empiece por =, +, - o @ (A2)', () => {
@@ -77,9 +59,9 @@ describe('escapeCsvCell — RFC 4180 (ORDER-02)', () => {
 })
 
 describe('la exportación es ciega (SEC-02, ORDER-04, D-20)', () => {
-  it('tiene ocho columnas y ninguna de identidad ni de precio', () => {
-    expect(EXPORT_HEADERS).toHaveLength(8)
-    const csv = buildOrdersExport([base, { ...base, opaqueId: 'c3d4', type: 'Retro' }])
+  it('tiene dos columnas y ninguna de identidad ni de precio', () => {
+    expect(EXPORT_HEADERS).toHaveLength(2)
+    const csv = buildOrdersExport([base, { ...base, opaqueId: 'c3d4' }])
     expect(csv).not.toContain('giverUid')
     expect(csv).not.toContain('recipientUid')
     expect(csv).not.toContain('Precio')

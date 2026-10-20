@@ -10,10 +10,10 @@ import { buildOrdersExport, EXPORT_HEADERS, escapeCsvCell } from '../exportOrder
 import type { ExportedOrder } from '../types'
 
 const FIXTURE_ORDERS: ExportedOrder[] = [
-  { opaqueId: 'opaque-1', type: 'Fan', team: 'Real Madrid', season: '2024', printedName: 'José', number: '9', size: 'M', orderText: 'Fan Real Madrid 2024 M 9 - url + info' },
-  { opaqueId: 'opaque-2', type: 'Player', team: 'Atlético, SA', season: '2023', printedName: 'María', number: '09', size: 'L', orderText: 'Player Atlético, SA 2023 L 09 - url + info' },
-  { opaqueId: 'opaque-3', type: 'Retro', team: 'Barça "Fan"', season: '2025', printedName: "O'Connor", number: '100', size: 'S', orderText: 'Retro Barça "Fan" 2025 S 100 - url + info' },
-  { opaqueId: 'opaque-4', type: 'Fan', team: 'Valencia CF', season: '2024', printedName: 'Juan Pérez', number: '007', size: 'XXL', orderText: 'Fan Valencia CF 2024 XXL 007 - url + info' },
+  { opaqueId: 'opaque-1', orderText: 'Fan Real Madrid 2024 M 9 - url + info' },
+  { opaqueId: 'opaque-2', orderText: 'Player Atlético, SA 2023 L 09 - url + info' },
+  { opaqueId: 'opaque-3', orderText: 'Retro Barça "Fan" 2025 S 100 - url + info' },
+  { opaqueId: 'opaque-4', orderText: 'Fan Valencia CF 2024 XXL 007 - url + info' },
 ]
 
 /**
@@ -50,22 +50,12 @@ describe('buildOrdersExport — fixture test (SEC-04, D-04/D-05)', () => {
     }
   })
 
-  it('3. dorsals preserve leading zeros as strings', () => {
-    const csv = buildOrdersExport(FIXTURE_ORDERS)
-    // Row 2 (index 1 in data lines) should have 09
-    expect(csv).toContain(';09;')
-    // Row 3 should have 100
-    expect(csv).toContain(';100;')
-    // Row 4 should have 007
-    expect(csv).toContain(';007;')
-  })
-
-  it('4. UTF-8 BOM present at start of output', () => {
+  it('3. UTF-8 BOM present at start of output', () => {
     const csv = buildOrdersExport(FIXTURE_ORDERS)
     expect(csv.charCodeAt(0)).toBe(0xFEFF)
   })
 
-  it('5. separator is ; and line endings are CRLF', () => {
+  it('4. separator is ; and line endings are CRLF', () => {
     const csv = buildOrdersExport(FIXTURE_ORDERS)
     // All line endings should be CRLF
     expect(csv.endsWith('\r\n')).toBe(true)
@@ -77,11 +67,11 @@ describe('buildOrdersExport — fixture test (SEC-04, D-04/D-05)', () => {
     const dataPart = csv.slice(1).replace(/\r\n/g, '\n') // skip BOM
     const lines = dataPart.split('\n').filter(l => l)
     for (const line of lines) {
-      expect(line.split(';').length).toBe(8)
+      expect(line.split(';').length).toBe(2)
     }
   })
 
-  it('6. round-trip parse returns expected data', () => {
+  it('5. round-trip parse returns expected data', () => {
     const csv = buildOrdersExport(FIXTURE_ORDERS)
     // Simple parse: split by CRLF, then by semicolon (handles quoted cells with commas)
     const lines = csv.split('\r\n').filter(l => l)
@@ -119,13 +109,7 @@ describe('buildOrdersExport — fixture test (SEC-04, D-04/D-05)', () => {
       const row = parsedRows[i]
       const fixture = FIXTURE_ORDERS[i]
       expect(row[0]).toBe(fixture.opaqueId)
-      expect(row[1]).toBe(fixture.type)
-      expect(row[2]).toBe(fixture.team)
-      expect(row[3]).toBe(fixture.season)
-      expect(row[4]).toBe(fixture.printedName)
-      expect(row[5]).toBe(fixture.number)
-      expect(row[6]).toBe(fixture.size)
-      expect(row[7]).toBe(fixture.orderText)
+      expect(row[1]).toBe(fixture.orderText)
     }
   })
 })

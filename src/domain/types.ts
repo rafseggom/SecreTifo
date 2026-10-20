@@ -40,28 +40,15 @@ export type EventDoc = {
 }
 
 export type Order = {
-  type: KitType
-  team: string
-  season: string
-  printedName: string
-  /** D-15: a STRING, so leading zeros survive ("09" stays "09"). */
-  number: string
-  size: Size
   opaqueId: string
   submittedAt: string
   /** Texto libre del pedido (plantilla rellenada por el usuario) */
-  orderText?: string
+  orderText: string
 }
 
 export type OrderInput = {
-  type?: KitType
-  team?: string
-  season?: string
-  printedName?: string
-  number?: string
-  size?: Size
   /** Texto libre del pedido (plantilla rellenada por el usuario) */
-  orderText?: string
+  orderText: string
 }
 
 /**
@@ -80,12 +67,6 @@ export type StoredIdentity = {
  */
 export type ExportedOrder = {
   opaqueId: string
-  type: KitType
-  team: string
-  season: string
-  printedName: string
-  number: string
-  size: Size
   /** Texto libre del pedido (plantilla rellenada por el usuario) */
   orderText?: string
 }

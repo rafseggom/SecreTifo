@@ -23,6 +23,15 @@ export type Participant = {
   forbiddenTeams: string
   joinedAt: unknown
   hasOrder: boolean
+  /**
+   * PBKDF2 hash of the participant's access PIN (`pbkdf2-sha256$iterations$salt$hash`).
+   *
+   * It is optional because participants created before the PIN feature exist, and an
+   * old document must keep working. The hash is readable by every signed-in member
+   * (the roster is public within the event), so the PIN is a casual access lock —
+   * not a replacement for Firebase Authentication.
+   */
+  pinHash?: string
 }
 
 export type EventDoc = {
@@ -63,6 +72,12 @@ export type OrderInput = {
 export type StoredIdentity = {
   uid: string
   name: string
+  /**
+   * Local copy of the participant's PIN hash. It lets the unlock screen work before
+   * the participant document exists (the PIN is chosen on S1, the document is created
+   * on S2) and keeps the lock available if the roster read fails.
+   */
+  pinHash?: string
 }
 
 /**

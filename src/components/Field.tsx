@@ -40,14 +40,14 @@ export function Field({ label, helper, error, required = false, children }: Fiel
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-label text-slate-900">
+      <label htmlFor={id} className="text-label font-medium text-foreground">
         {label}
         {required ? <span aria-hidden="true"> *</span> : null}
         {required ? <span className="sr-only"> obligatorio</span> : null}
       </label>
       {children({ id, describedBy, invalid: Boolean(error) })}
       {helper ? (
-        <p id={helperId} className="text-label text-slate-600">
+        <p id={helperId} className="text-label text-muted-foreground">
           {helper}
         </p>
       ) : null}

@@ -44,3 +44,21 @@ export function SpinnerIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+/** Camiseta: la marca de SecretKit, sin dependencia de iconos. */
+export function JerseyIcon({ className }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M9 3.5 5.5 5 3 9l2.5 2L7 10v10h10V10l1.5 1L21 9l-2.5-4L15 3.5a3 3 0 0 1-6 0Z" />
+    </svg>
+  )
+}

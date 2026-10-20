@@ -17,8 +17,8 @@ type SelectProps = ComponentPropsWithRef<'select'> & {
   options?: readonly string[]
   /**
    * Optional visible label per option, keyed by its value. The `value` stays
-   * verbatim (the enum member) while the label may carry extra context — D-17 needs
-   * the type option to read `Fan · 11$` without the stored value becoming that string.
+   * verbatim while the label may carry extra context — D-17 needs the type option
+   * to read `Fan · 11$` without the stored value becoming that string.
    */
   optionLabels?: Partial<Record<string, string>>
   placeholder: string
@@ -26,7 +26,7 @@ type SelectProps = ComponentPropsWithRef<'select'> & {
 }
 
 const SELECT_CLASSES =
-  'h-11 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2'
+  'h-12 w-full appearance-none rounded-xl border border-border bg-surface px-4 pr-10 text-base text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors hover:border-border focus:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/25 aria-invalid:border-red-400 aria-invalid:focus-visible:ring-red-200'
 
 export function Select({
   options = SIZES,

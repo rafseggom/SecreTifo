@@ -55,7 +55,7 @@ export async function isNameTaken(name: string, excludeUid?: string): Promise<bo
 export async function joinEvent(
   uid: string,
   name: string,
-  prefs: { size: Size; likedTeams: string; forbiddenTeams: string },
+  prefs: { size: Size; likedTeams: string; forbiddenTeams: string; pinHash?: string },
 ): Promise<JoinResult> {
   const nameNormalized = normalizeName(name)
 
@@ -105,6 +105,9 @@ export async function joinEvent(
       // Stored as an empty string when the user types nothing — never null/undefined.
       likedTeams: prefs.likedTeams,
       forbiddenTeams: prefs.forbiddenTeams,
+      // Optional for participants created before the PIN feature. Firestore rejects
+      // `undefined`, so the field is omitted rather than written as undefined.
+      ...(prefs.pinHash ? { pinHash: prefs.pinHash } : {}),
       joinedAt: firestore.serverTimestamp(),
       hasOrder: false,
     })

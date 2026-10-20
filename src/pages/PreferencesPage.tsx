@@ -24,7 +24,8 @@ import { Input } from '../components/Input'
 import { Select } from '../components/Select'
 import { Button } from '../components/Button'
 import { Notice } from '../components/Notice'
-import { SizeGuideModal } from '../components/SizeGuideModal'
+import { SizeGuideContent } from '../components/SizeGuideContent'
+import { TextButton } from '../components/TextButton'
 import { useSession } from '../session/SessionProvider'
 import { clearIdentity, loadIdentity } from '../lib/session'
 import { ERR_EVENT_CLOSED, ERR_NAME_RACE, ERR_NAME_TAKEN, joinEvent } from '../lib/joinEvent'
@@ -44,10 +45,11 @@ export default function PreferencesPage() {
   const [sizeError, setSizeError] = useState('')
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [guideOpen, setGuideOpen] = useState(false)
   const selectRef = useRef<HTMLSelectElement>(null)
 
   function handleChangeName() {
+    // clearIdentity also clears the per-tab unlock flag, so the next identity
+    // cannot inherit this tab's unlocked state.
     clearIdentity()
     navigate('/')
   }
@@ -70,7 +72,12 @@ export default function PreferencesPage() {
     setSubmitting(true)
 
     try {
-      await joinEvent(uid, name, { size, likedTeams, forbiddenTeams })
+      await joinEvent(uid, name, {
+        size,
+        likedTeams,
+        forbiddenTeams,
+        pinHash: stored?.pinHash,
+      })
       navigate('/lobby')
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : ''
@@ -83,7 +90,7 @@ export default function PreferencesPage() {
           cause instanceof Error && 'code' in cause
             ? String((cause as { code: unknown }).code)
             : 'unknown'
-        const { message: errMessage, canRetry } = errorCopy(code)
+        const { message: errMessage } = errorCopy(code)
         setFormError(errMessage)
         // If retryable, the Notice action will handle re-submit
       }
@@ -92,28 +99,34 @@ export default function PreferencesPage() {
   }
 
   return (
-    <Screen title="Tus preferencias" stickyCta>
+    <Screen title="Tus preferencias">
       {sessionLoading ? (
         // Loading skeleton while session resolves
         <Card className="mt-6 animate-pulse">
           <div className="flex flex-col gap-6">
-            <div className="h-10 w-3/4 bg-slate-200 rounded motion-reduce:animate-none" />
-            <div className="h-10 w-1/2 bg-slate-200 rounded motion-reduce:animate-none" />
-            <div className="h-10 w-1/4 bg-slate-200 rounded motion-reduce:animate-none" />
-            <div className="h-12 w-full bg-slate-200 rounded motion-reduce:animate-none" />
+            <div className="h-10 w-3/4 rounded bg-border motion-reduce:animate-none" />
+            <div className="h-10 w-1/2 rounded bg-border motion-reduce:animate-none" />
+            <div className="h-10 w-1/4 rounded bg-border motion-reduce:animate-none" />
+            <div className="h-12 w-full rounded bg-border motion-reduce:animate-none" />
           </div>
         </Card>
       ) : (
         <>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-label text-slate-600">
-            <span className="break-words">Entrarás como {name}</span>
-            <Button type="button" variant="ghost" onClick={handleChangeName}>
-              Cambiar nombre
-            </Button>
+          <p className="mt-3 text-body text-pretty text-muted-foreground">
+            Cuéntanos qué camiseta te gustaría. Quien te regale lo verá, pero nunca sabrás quién es
+            hasta que llegue el momento.
           </p>
 
-          <Card className="mt-6">
-            <form id="prefs-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-surface/70 px-4 py-3">
+            <p className="text-label text-muted-foreground">
+              Entrarás como{' '}
+              <span className="break-words font-semibold text-foreground">{name}</span>
+            </p>
+            <TextButton onClick={handleChangeName}>Cambiar nombre</TextButton>
+          </div>
+
+          <Card className="mt-5">
+            <form id="prefs-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
               <Field label="Tu talla" required error={sizeError || undefined}>
                 {({ id, describedBy, invalid }) => (
                   <Select
@@ -161,15 +174,6 @@ export default function PreferencesPage() {
                   />
                 )}
               </Field>
-
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={() => setGuideOpen(true)}
-              >
-                Guía de Tallas
-              </Button>
             </form>
           </Card>
 
@@ -193,7 +197,7 @@ export default function PreferencesPage() {
             </div>
           ) : null}
 
-          <div className="sticky bottom-0 mt-6 bg-dominant pt-4 sm:static sm:bg-transparent sm:pt-0">
+          <div className="mt-5">
             <Button
               type="submit"
               form="prefs-form"
@@ -205,7 +209,22 @@ export default function PreferencesPage() {
             </Button>
           </div>
 
-          <SizeGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
+          {/* #6: the guide is no longer a modal behind a button — it is always here,
+              so the size decision and its reference live on the same screen. */}
+          <section className="mt-12" aria-labelledby="size-guide-title">
+            <h2
+              id="size-guide-title"
+              className="text-heading font-semibold tracking-[-0.015em] text-foreground"
+            >
+              Guía de tallas
+            </h2>
+            <p className="mt-2 text-label text-pretty text-muted-foreground">
+              Medidas del proveedor, tal cual nos las pasó. La versión Retro usa la tabla Fan.
+            </p>
+            <div className="mt-5">
+              <SizeGuideContent />
+            </div>
+          </section>
         </>
       )}
     </Screen>

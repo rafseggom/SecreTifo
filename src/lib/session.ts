@@ -41,7 +41,8 @@ export function loadIdentity(): StoredIdentity | null {
     if (!parsed || typeof parsed.uid !== 'string' || typeof parsed.name !== 'string') {
       return null
     }
-    return { uid: parsed.uid, name: parsed.name }
+    const pinHash = typeof parsed.pinHash === 'string' ? parsed.pinHash : undefined
+    return { uid: parsed.uid, name: parsed.name, ...(pinHash ? { pinHash } : {}) }
   } catch {
     // A corrupted JSON payload must not break startup — it reads as "no identity".
     return null
@@ -54,6 +55,39 @@ export function saveIdentity(identity: StoredIdentity): void {
 
 export function clearIdentity(): void {
   localStorage.removeItem(IDENTITY_KEY)
+  clearUnlocked()
+}
+
+/**
+ * Unlock state is scoped to the browser TAB (`sessionStorage`): closing the tab
+ * locks the identity again, while an accidental refresh inside the same tab does
+ * not. That is the closest thing to "the next time you open the app" without a
+ * server round-trip.
+ */
+const UNLOCK_KEY = 'secretkit.unlockedUid'
+
+export function markUnlocked(uid: string): void {
+  try {
+    sessionStorage.setItem(UNLOCK_KEY, uid)
+  } catch {
+    // Private mode / storage disabled: the in-memory state still unblocks this render.
+  }
+}
+
+export function isUnlocked(uid: string): boolean {
+  try {
+    return sessionStorage.getItem(UNLOCK_KEY) === uid
+  } catch {
+    return false
+  }
+}
+
+export function clearUnlocked(): void {
+  try {
+    sessionStorage.removeItem(UNLOCK_KEY)
+  } catch {
+    // Nothing to clear when storage is unavailable.
+  }
 }
 
 const ADMIN_SECRET_KEY = 'secretkit.adminSecretValidated'

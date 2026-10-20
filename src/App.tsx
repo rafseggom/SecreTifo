@@ -16,8 +16,8 @@
  * discarding the stored identity.
  */
 import { useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
-import { isAdminSecretValidated, loadIdentity, clearIdentity } from './lib/session'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
+import { isAdminSecretValidated, loadIdentity, clearIdentity, isUnlocked } from './lib/session'
 import { useSession } from './session/SessionProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FullScreenSpinner } from './components/FullScreenSpinner'
@@ -31,11 +31,20 @@ import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
 import AdminSetupPage from './pages/AdminSetupPage'
 import AdminLoginPage from './pages/AdminLoginPage'
+import UnlockPage from './pages/UnlockPage'
 
 export default function App() {
   const { loading, uid, role, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
     useSession()
   const [identityCleared, setIdentityCleared] = useState(false)
+  // Bumped after a successful unlock so the gate re-renders without a reload.
+  const [unlockTick, setUnlockTick] = useState(0)
+  // #1/#4: App reads localStorage during render, and <Routes> alone does not
+  // re-render App on navigation. Without this, "/" and "/preferences" kept the
+  // `element` computed with the identity from BEFORE the form saved it, so the
+  // user stayed on the name input (and «Cambiar nombre» bounced back).
+  const location = useLocation()
+  void unlockTick
 
   // Never a blank screen before the first server response.
   if (loading) return <FullScreenSpinner />
@@ -107,6 +116,7 @@ export default function App() {
                 onClick={() => {
                   clearIdentity()
                   setIdentityCleared(true)
+                  setUnlockTick((tick) => tick + 1)
                 }}
               >
                 Volver a entrar
@@ -118,9 +128,32 @@ export default function App() {
     )
   }
 
+  // A stored identity with a PIN stays locked until the tab is unlocked. This runs
+  // BEFORE the routes: no page may render its data behind an unverified PIN.
+  const lockedIdentity =
+    stored && stored.pinHash
+      ? { uid: stored.uid, name: stored.name, pinHash: stored.pinHash }
+      : null
+
+  if (identityPresent && lockedIdentity && !isUnlocked(lockedIdentity.uid)) {
+    return (
+      <ErrorBoundary>
+        <UnlockPage
+          stored={lockedIdentity}
+          onUnlocked={() => setUnlockTick((tick) => tick + 1)}
+          onSwitchUser={() => {
+            clearIdentity()
+            setIdentityCleared(true)
+            setUnlockTick((tick) => tick + 1)
+          }}
+        />
+      </ErrorBoundary>
+    )
+  }
+
   return (
     <ErrorBoundary>
-      <Routes>
+      <Routes location={location}>
         <Route
           path="/"
           element={identityPresent ? <Navigate to={joinedHome} replace /> : <EntryPage />}

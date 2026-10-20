@@ -72,7 +72,7 @@ export const PLAYER_TABLE: SizeGuideTableProps = {
 
 function AnomalyBadge({ children }: { children: React.ReactNode }) {
   return (
-    <Badge variant="warning" className="ml-2 shrink-0">
+    <Badge variant="warning" className="ml-2 max-w-[14rem] shrink-0 whitespace-normal">
       {children}
     </Badge>
   )
@@ -84,14 +84,14 @@ export function SizeGuideTable({ caption, columns, rows, kitType }: SizeGuideTab
   return (
     <div className="overflow-x-auto">
       <table className="hidden w-full text-left sm:table size-guide-table">
-        <caption className="pb-2 text-label font-semibold text-slate-900">{caption}</caption>
+        <caption className="pb-3 text-body font-semibold text-foreground">{caption}</caption>
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column.label}
                 scope="col"
-                className="border-b border-slate-200 py-3 pr-3 text-label font-semibold text-slate-900 sticky top-0 z-10 bg-white"
+                className="border-b border-border py-3 pr-3 text-label font-semibold text-foreground sticky top-0 z-10 bg-white"
               >
                 {column.label}
               </th>
@@ -100,11 +100,13 @@ export function SizeGuideTable({ caption, columns, rows, kitType }: SizeGuideTab
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.size}>
+            <tr key={row.size} className="align-top">
               {columns.map((column) => (
                 <td
                   key={column.label}
-                  className="border-b border-slate-200 py-3 pr-3 align-top text-body text-slate-900"
+                  className={`border-b border-border py-3 pr-3 text-body text-foreground ${
+                    column.label === 'Talla' ? 'font-semibold whitespace-nowrap' : ''
+                  }`}
                 >
                   {column.get(row)}
                   {isPlayer && column.label === 'Talla' && (
@@ -128,9 +130,9 @@ export function SizeGuideTable({ caption, columns, rows, kitType }: SizeGuideTab
       <ul className="flex flex-col gap-3 sm:hidden size-guide-cards">
         {rows.map((row) => (
           <li key={row.size}>
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center gap-2">
-                <p className="text-body font-semibold text-slate-900">{row.size}</p>
+            <div className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-body font-semibold text-foreground">{row.size}</p>
                 {isPlayer && (
                   <>
                     {isSizeUnavailableForKit('Player', row.size as any) && (
@@ -142,11 +144,11 @@ export function SizeGuideTable({ caption, columns, rows, kitType }: SizeGuideTab
                   </>
                 )}
               </div>
-              <dl className="mt-2 flex flex-col gap-1">
+              <dl className="mt-3 flex flex-col gap-1.5">
                 {columns.slice(1).map((column) => (
                   <div key={column.label} className="flex justify-between gap-4">
-                    <dt className="text-label text-slate-600">{column.label}</dt>
-                    <dd className="text-label text-slate-900">{column.get(row)}</dd>
+                    <dt className="text-label text-muted-foreground">{column.label}</dt>
+                    <dd className="text-label font-medium text-foreground">{column.get(row)}</dd>
                   </div>
                 ))}
               </dl>

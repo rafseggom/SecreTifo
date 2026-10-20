@@ -9,9 +9,16 @@
  * silent drop: a `permission-denied` on the event subscription would otherwise leave
  * the app with no session status and nothing on screen explaining it.
  */
-import { collection, doc, getDoc, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from './firebase'
 import type { EventDoc, Participant } from '../domain/types'
+
+function toParticipant(snapshot: {
+  id: string
+  data: () => unknown
+}): Participant {
+  return { uid: snapshot.id, ...(snapshot.data() as Omit<Participant, 'uid'>) }
+}
 
 export function subscribeParticipants(
   cb: (list: Participant[]) => void,
@@ -19,11 +26,23 @@ export function subscribeParticipants(
 ): () => void {
   return onSnapshot(
     query(collection(db, 'events', 'main', 'participants'), orderBy('nameNormalized')),
-    (snap) => cb(snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Participant, 'uid'>) }))),
+    (snap) => cb(snap.docs.map(toParticipant)),
     (err) => {
       onFailure?.(err.code)
     },
   )
+}
+
+/**
+ * One-shot roster read used by the unlock screen. It never subscribes: the list is
+ * only needed to label the participant selector, and the PIN check happens against
+ * the document read by id.
+ */
+export async function listParticipants(): Promise<Participant[]> {
+  const snap = await getDocs(
+    query(collection(db, 'events', 'main', 'participants'), orderBy('nameNormalized')),
+  )
+  return snap.docs.map(toParticipant)
 }
 
 export function subscribeEvent(
@@ -53,7 +72,7 @@ export function subscribeEvent(
 export async function getParticipant(uid: string): Promise<Participant | null> {
   const snap = await getDoc(doc(db, 'events', 'main', 'participants', uid))
   if (!snap.exists()) return null
-  return { uid: snap.id, ...(snap.data() as Omit<Participant, 'uid'>) }
+  return toParticipant(snap)
 }
 
 /**
@@ -78,12 +97,7 @@ export function subscribeParticipant(
 ): () => void {
   return onSnapshot(
     doc(db, 'events', 'main', 'participants', uid),
-    (snap) =>
-      cb(
-        snap.exists()
-          ? { uid: snap.id, ...(snap.data() as Omit<Participant, 'uid'>) }
-          : null,
-      ),
+    (snap) => cb(snap.exists() ? toParticipant(snap) : null),
     (err) => {
       onFailure?.(err.code)
     },

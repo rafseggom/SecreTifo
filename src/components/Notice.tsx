@@ -25,10 +25,10 @@ import type { ReactNode } from 'react'
 export type NoticeTone = 'warning' | 'error' | 'info' | 'success'
 
 const TONE_CLASSES: Record<NoticeTone, string> = {
-  warning: 'border-amber-300 bg-amber-50 text-amber-700',
-  error: 'border-red-200 bg-red-50 text-red-800',
-  info: 'border-slate-200 bg-slate-50 text-slate-700',
-  success: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+  warning: 'border-warning-border bg-warning-surface text-warning',
+  error: 'border-error-border bg-error-surface text-error',
+  info: 'border-border bg-dominant text-muted-foreground',
+  success: 'border-success-border bg-success-surface text-success',
 }
 
 type NoticeProps = {

@@ -1,16 +1,13 @@
 /**
  * Button primitive (01-UI-SPEC §Component Contracts).
  *
- * One size only: `h-11` (44px) — the phase's minimum interactive target —
- * `px-4`, `rounded-lg`, 16px label. Four variants:
+ * One size only: `h-12` (48px) — a comfortable touch target — `px-5`, `rounded-xl`,
+ * 16px label. Four variants:
  *
- *  - `primary`   solid indigo-600 / white text. The ONLY indigo button of the
- *                phase, and the single primary CTA of each screen.
- *  - `secondary` white / slate-300 border / slate-900 text. Used by the size
- *                guide trigger and the S8 "come back in" action.
- *  - `danger`    solid red-600 / white. Reserved for the draw confirmation
- *                dialog (wave 4) — never the inline error surface.
- *  - `ghost`     transparent / slate-700 text, for `Cambiar nombre`.
+ *  - `primary`   solid pitch green / white text. The single primary CTA of a screen.
+ *  - `secondary` surface / border / ink text, for the quieter actions.
+ *  - `danger`    solid red. Reserved for the draw confirmation dialog.
+ *  - `ghost`     transparent, for inline secondary actions.
  *
  * Variants resolve through a lookup object holding COMPLETE literal class names.
  * A Tailwind class is never composed by filtering a colour step into the name:
@@ -26,19 +23,21 @@ export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
 export type ButtonSize = 'default' | 'sm'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: 'bg-indigo-600 text-white font-semibold',
-  secondary: 'border border-slate-300 bg-white text-slate-900 font-normal',
-  danger: 'bg-red-600 text-white font-semibold',
-  ghost: 'bg-transparent text-slate-700 font-normal',
+  primary:
+    'bg-accent text-accent-foreground font-semibold shadow-sm hover:bg-accent-strong active:bg-accent-strong',
+  secondary:
+    'border border-border bg-surface text-foreground font-normal hover:border-accent/40 hover:bg-dominant',
+  danger: 'bg-destructive text-white font-semibold hover:bg-destructive/90',
+  ghost: 'bg-transparent text-muted-foreground font-normal hover:bg-dominant hover:text-foreground',
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  default: 'h-11 min-w-11 px-4 text-base',
+  default: 'h-12 min-w-12 px-5 text-base',
   sm: 'h-9 min-w-9 px-3 text-label',
 }
 
 const BASE_CLASSES =
-  'inline-flex items-center justify-center gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400'
+  'inline-flex items-center justify-center gap-2 rounded-xl transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-dominant disabled:cursor-not-allowed disabled:bg-disabled disabled:text-disabled-foreground disabled:shadow-none disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant: ButtonVariant

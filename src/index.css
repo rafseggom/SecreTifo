@@ -1,97 +1,111 @@
 @import "tailwindcss";
 
 /*
- * SecretKit design tokens (Phase 1).
- * Every colour/token the UI-SPEC declares lives here as a named token so no
- * component hardcodes a hex value. Values are the literals from 01-UI-SPEC.md
- * §Color / §Typography; the trailing comment names the Tailwind palette step
- * each one equals.
+ * SecretKit design tokens (Phase 1, refreshed).
+ *
+ * A warm paper background + pitch-green accent: the subject is a football
+ * jersey exchange, so the palette comes from a matchday programme rather than
+ * from a generic SaaS template. Every colour the UI uses lives here as a named
+ * token, so a future palette change is one block, not a grep.
  */
 @theme {
   /* Surfaces */
-  --color-dominant: #f8fafc; /* slate-50 — page background */
-  --color-surface: #ffffff; /* white — cards, tables, dialog */
-  --color-surface-border: #e2e8f0; /* slate-200 — 1px card border */
+  --color-dominant: #f6f3ea; /* warm paper — page background */
+  --color-surface: #fffdf8; /* warm white — cards, tables, dialog */
+  --color-surface-border: #e4ded1; /* hairline border */
 
-  /* Accent (10%) — reserved list only (01-UI-SPEC §Color) */
-  --color-accent: #4f46e5; /* indigo-600 */
-  --color-accent-foreground: #ffffff; /* white */
+  /* Accent — pitch green */
+  --color-accent: #166534;
+  --color-accent-strong: #14532d;
+  --color-accent-foreground: #ffffff;
 
   /* Destructive — DrawConfirmDialog confirm button only */
-  --color-destructive: #dc2626; /* red-600 */
+  --color-destructive: #b91c1c;
 
-  /* Warning / notice — D-16 notice + D-12 anomaly notes only */
-  --color-warning: #b45309; /* amber-700 text */
-  --color-warning-surface: #fffbeb; /* amber-50 */
-  --color-warning-border: #fcd34d; /* amber-300 */
+  /* Warning / notice */
+  --color-warning: #92400e;
+  --color-warning-surface: #fffbeb;
+  --color-warning-border: #fcd34d;
 
   /* Foreground */
-  --color-foreground: #0f172a; /* slate-900 */
-  --color-muted-foreground: #475569; /* slate-600 */
-  --color-border: #e2e8f0; /* slate-200 */
-  --color-border-focused: #4f46e5; /* indigo-600 */
+  --color-foreground: #17211b; /* warm ink, green-tinted near-black */
+  --color-muted-foreground: #5f6b63;
+  --color-border: #e4ded1;
+  --color-border-focused: #166534;
 
   /* Disabled state */
-  --color-disabled: #e2e8f0; /* slate-200 */
-  --color-disabled-foreground: #94a3b8; /* slate-400 */
+  --color-disabled: #e7e2d6;
+  --color-disabled-foreground: #9aa39c;
 
   /* Error surface — inline error Notice */
-  --color-error-surface: #fef2f2; /* red-50 */
-  --color-error-border: #fecaca; /* red-200 */
-  --color-error: #991b1b; /* red-800 */
+  --color-error-surface: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-error: #991b1b;
 
   /* Success / status */
-  --color-success-surface: #ecfdf5; /* emerald-50 */
-  --color-success-border: #a7f3d0; /* emerald-300 */
-  --color-success: #065f46; /* emerald-800 */
+  --color-success-surface: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-success: #065f46;
 
   /* Progress bar (/admin only) */
-  --color-progress-track: #e2e8f0; /* slate-200 */
-  --color-progress-fill: #4f46e5; /* indigo-600 */
+  --color-progress-track: #e7e2d6;
+  --color-progress-fill: #166534;
 
-  /* Typography scale — exactly two weights (400/600), never below 14px */
+  /* Soft elevation, tuned for the warm background */
+  --shadow-card: 0 1px 2px rgba(23, 33, 27, 0.04), 0 18px 40px -24px rgba(23, 33, 27, 0.32);
+
+  /* Typography scale — two weights (400/600), never below 14px */
   --text-label: 14px;
   --text-label--line-height: 1.5;
   --text-body: 16px;
-  --text-body--line-height: 1.5;
+  --text-body--line-height: 1.55;
   --text-heading: 20px;
-  --text-heading--line-height: 1.2;
-  --text-display: 28px;
-  --text-display--line-height: 1.2;
+  --text-heading--line-height: 1.25;
+  --text-display: 32px;
+  --text-display--line-height: 1.1;
 }
 
 @layer base {
   html {
     color-scheme: light;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
+    min-height: 100dvh;
     background-color: var(--color-dominant);
+    background-image: radial-gradient(
+      1100px 560px at 50% -12%,
+      rgba(22, 101, 52, 0.13),
+      transparent 65%
+    );
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: var(--color-foreground);
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-optical-sizing: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
 }
 
-/* SizeGuideTable responsive */
+/* The size guide's card list is the mobile view; the real table takes over at sm. */
 .size-guide-cards {
   @apply block sm:hidden;
 }
 
 .size-guide-table {
-  @apply hidden sm:block;
+  @apply hidden sm:table;
 }
 
 /* Sticky table headers */
 .size-guide-table thead th {
-  @apply sticky top-0 z-10 bg-white border-b border-slate-200;
-}
-
-/* SizeGuideModal dialog constraints */
-dialog.size-guide-modal {
-  @apply max-h-[80vh] overflow-y-auto;
-}
-
-dialog.size-guide-modal::backdrop {
-  @apply bg-black/50;
+  @apply sticky top-0 z-10 border-b border-border bg-white;
 }

@@ -77,11 +77,11 @@ export function buildOrdersExport(orders: ExportedOrder[]): string {
 /**
  * Builds an anonymous gift list for the .txt download.
  * One line per gift, no participant identity, no pairing info.
- * Uses the user's free-text order.
+ * Format: "Camiseta 1: [texto]\nCamiseta 2: [texto]\n..."
  */
 export function buildGiftsTxtExport(orders: ExportedOrder[]): string {
-  const lines = orders.map((o) =>
-    o.orderText?.trim() ?? '(sin pedido)'
+  const lines = orders.map((o, i) =>
+    `Camiseta ${i + 1}: ${o.orderText?.trim() ?? '(sin pedido)'}`
   )
   return lines.join('\n') + '\n'
 }

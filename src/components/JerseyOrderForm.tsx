@@ -1,5 +1,6 @@
 /**
  * S6 — the order form (simplified). Single text field with template guide.
+ * Supports both creating new orders and editing existing ones.
  *
  * The user fills in one text area following the template:
  * "Tipo camiseta - Equipo - Temporada - Talla - Numero / Dorsal - URL si la tienes + info extra (como parches)"
@@ -32,24 +33,39 @@ export function JerseyOrderForm({ giverNameNormalized }: JerseyOrderFormProps) {
   const [orderText, setOrderText] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [editing, setEditing] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Repaint the read-only recap after a reload
+  // Load existing order on mount
   useEffect(() => {
     let cancelled = false
 
     void (async () => {
       const order = await getMyOrder(giverNameNormalized).catch(() => null)
       if (cancelled || !order) return
-      // order.orderText is the new field
       const text = (order as { orderText?: string }).orderText
-      if (text) setSaved(text)
+      if (text) {
+        setSaved(text)
+        setOrderText(text) // Pre-fill for editing
+      }
     })()
 
     return () => {
       cancelled = true
     }
   }, [giverNameNormalized])
+
+  function startEditing() {
+    setEditing(true)
+    // Focus after state update
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }
+
+  function cancelEditing() {
+    setEditing(false)
+    // Restore original text
+    if (saved) setOrderText(saved)
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -67,6 +83,7 @@ export function JerseyOrderForm({ giverNameNormalized }: JerseyOrderFormProps) {
     try {
       await submitOrder(giverNameNormalized, { orderText: trimmed })
       setSaved(trimmed)
+      setEditing(false)
     } catch (thrown) {
       const code =
         thrown instanceof Error && 'code' in thrown
@@ -78,16 +95,42 @@ export function JerseyOrderForm({ giverNameNormalized }: JerseyOrderFormProps) {
     }
   }
 
-  if (saved) {
-    return <OrderRecap orderText={saved} />
+  // If we have a saved order and not editing, show recap with edit button
+  if (saved && !editing) {
+    return (
+      <Card className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <h3 className="text-heading font-semibold text-slate-900">Tu pedido</h3>
+          <Badge>Guardado</Badge>
+        </div>
+
+        <div className="bg-surface/50 rounded-xl p-4 font-mono text-sm text-slate-900 whitespace-pre-wrap break-words">
+          {saved}
+        </div>
+
+        <p className="text-body text-slate-600">
+          Ya has guardado tu pedido. El Admin lo incluirá en la lista que se envía al vendedor.
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <Button type="button" variant="secondary" onClick={startEditing}>
+            Editar pedido
+          </Button>
+          <p className="text-label text-slate-600 text-center">
+            Si ves un error, pulsa «Editar pedido» para corregirlo.
+          </p>
+        </div>
+      </Card>
+    )
   }
 
+  // Show form (either new or editing)
   return (
     <Card>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         <Field
-          label="Tu pedido"
-          helper="Copia y rellena la plantilla (intenta que esté bien, la va a leer el xino, no yo)."
+          label={editing ? 'Editar tu pedido' : 'Tu pedido'}
+          helper="Copia y rellena la plantilla (intenta que esté bien, la va a leer el vendedor, no yo)."
           error={submitError || undefined}
         >
           {({ id, describedBy, invalid }) => (
@@ -123,33 +166,17 @@ export function JerseyOrderForm({ giverNameNormalized }: JerseyOrderFormProps) {
           </Notice>
         ) : null}
 
-        <Button type="submit" variant="primary" loading={submitting} className="w-full">
-          {submitting ? 'Guardando…' : 'Guardar pedido'}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button type="submit" variant="primary" loading={submitting} className="w-full">
+            {editing ? 'Guardar cambios' : 'Guardar pedido'}
+          </Button>
+          {editing && (
+            <Button type="button" variant="ghost" onClick={cancelEditing} className="w-full">
+              Cancelar
+            </Button>
+          )}
+        </div>
       </form>
-    </Card>
-  )
-}
-
-/**
- * The read-only recap the form becomes after a successful save.
- */
-function OrderRecap({ orderText }: { orderText: string }) {
-  return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="text-heading font-semibold text-slate-900">Tu pedido</h3>
-        <Badge>Guardado</Badge>
-      </div>
-
-      <div className="bg-surface/50 rounded-xl p-4 font-mono text-sm text-slate-900 whitespace-pre-wrap break-words">
-        {orderText}
-      </div>
-
-      <p className="text-body text-slate-600">
-        Ya has guardado tu pedido. El Admin lo incluirá en la lista que se envía al vendedor.
-      </p>
-      <p className="text-label text-slate-600">Para cambiarlo, avisa al Admin.</p>
     </Card>
   )
 }

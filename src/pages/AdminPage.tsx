@@ -234,8 +234,8 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
           Descargar Pedidos (CSV para vendedor)
         </Button>
 
-        {/* TXT gift list - only when ALL orders are in */}
-        {filled === total && total > 0 && (
+        {/* TXT gift list - available when there are orders */}
+        {filled > 0 && (
           <Button
             type="button"
             variant="secondary"

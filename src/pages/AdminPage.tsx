@@ -24,6 +24,7 @@
  */
 import { useState } from 'react'
 import { useSession } from '../session/SessionProvider'
+import { useNavigate } from 'react-router'
 import { Screen } from '../components/Screen'
 import { Card } from '../components/Card'
 import { Notice } from '../components/Notice'
@@ -35,6 +36,7 @@ import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorC
 import { downloadCsv, downloadText, ordersCsvFilename, giftsTxtFilename } from '../lib/download'
 import { buildOrdersExport, buildGiftsTxtExport } from '../domain/exportOrders'
 import { errorCopy, downloadErrorCopy } from '../lib/errorCopy'
+import { clearAllSession } from '../lib/session'
 
 const TRUST_NOTE = 'La lista no incluye quién regala a quién.'
 
@@ -47,6 +49,7 @@ export default function AdminPage() {
 function AdminBody({ onRetry }: { onRetry: () => void }) {
   const { loading, error, filled, total, pending, allParticipants } = useOrdersAdmin()
   const { eventStatus } = useSession()
+  const navigate = useNavigate()
   const [downloading, setDownloading] = useState(false)
   const [downloadedName, setDownloadedName] = useState('')
   const [downloadError, setDownloadError] = useState('')
@@ -256,6 +259,10 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
         ) : null}
 
         <p className="text-label text-slate-600">{TRUST_NOTE}</p>
+
+        <Button type="button" variant="ghost" onClick={() => { clearAllSession(); navigate('/', { replace: true }); }}>
+          Cerrar sesión de Admin
+        </Button>
       </div>
 
       {/* Participantes table */}

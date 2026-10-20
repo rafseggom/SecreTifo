@@ -196,11 +196,12 @@ export default function App() {
             /*
               Admin login: accessible whenever the event exists and the local panel
               flag is missing. The shared password is the only requirement.
+              Allow access even if user has participant identity (they can be both).
             */
             eventStatus !== null && !isAdminSecretValidated() ? (
               <AdminLoginPage />
             ) : (
-              <Navigate to={home} replace />
+              <Navigate to="/admin" replace />
             )
           }
         />

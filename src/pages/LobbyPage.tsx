@@ -24,7 +24,7 @@ import { DrawConfirmDialog } from '../components/DrawConfirmDialog'
 import { useSession } from '../session/SessionProvider'
 import { runDraw } from '../lib/draw'
 import { errorCopy } from '../lib/errorCopy'
-import { isAdminSecretValidated } from '../lib/session'
+import { isAdminSecretValidated, clearAllSession } from '../lib/session'
 import * as lobby from '../lib/lobby'
 import type { Participant } from '../domain/types'
 
@@ -163,6 +163,9 @@ export default function LobbyPage() {
           <Button type="button" variant="secondary" onClick={() => navigate('/admin')}>
             Panel del Admin
           </Button>
+          <Button type="button" variant="ghost" onClick={() => { clearAllSession(); navigate('/', { replace: true }); }}>
+            Cerrar sesión
+          </Button>
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
@@ -176,6 +179,9 @@ export default function LobbyPage() {
           ) : null}
           <Button type="button" variant="ghost" onClick={() => navigate('/admin/login')} className="w-full sm:w-auto">
             Acceso Admin
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => { clearAllSession(); navigate('/', { replace: true }); }}>
+            Cambiar de usuario
           </Button>
         </div>
       )}

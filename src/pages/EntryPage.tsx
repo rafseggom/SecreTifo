@@ -186,6 +186,7 @@ export default function EntryPage() {
         pinHash: participant.pinHash,
       })
       markUnlocked(participant.nameNormalized)
+      retryIdentity()
 
       if (eventStatus === 'drawn') {
         navigate('/reveal')
@@ -236,6 +237,7 @@ export default function EntryPage() {
         pinHash: participant.pinHash,
       })
       markUnlocked(participant.nameNormalized)
+      retryIdentity()
 
       if (eventStatus === 'drawn') {
         navigate('/reveal')

@@ -72,3 +72,9 @@ export function setAdminSecretValidated(): void {
 export function clearAdminSecretValidated(): void {
   localStorage.removeItem(ADMIN_SECRET_KEY)
 }
+
+/** Clears everything: identity, unlock, admin flag. For logout. */
+export function clearAllSession(): void {
+  clearIdentity()
+  clearAdminSecretValidated()
+}

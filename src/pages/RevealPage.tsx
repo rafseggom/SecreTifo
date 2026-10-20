@@ -26,7 +26,7 @@ import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { JerseyOrderForm } from '../components/JerseyOrderForm'
 import { useSession } from '../session/SessionProvider'
-import { isAdminSecretValidated } from '../lib/session'
+import { isAdminSecretValidated, clearAllSession } from '../lib/session'
 import { useMyAssignment } from '../hooks/useMyAssignment'
 import { getParticipant } from '../lib/lobby'
 import { errorCopy } from '../lib/errorCopy'
@@ -59,6 +59,7 @@ export default function RevealPage() {
       onGoAdmin={() => navigate('/admin')}
       onGoAdminLogin={() => navigate('/admin/login')}
       onRetry={() => setReloadKey((key) => key + 1)}
+      onLogout={() => { clearAllSession(); navigate('/', { replace: true }); }}
     />
   )
 }
@@ -69,9 +70,10 @@ type RevealBodyProps = {
   onGoAdmin: () => void
   onRetry: () => void
   onGoAdminLogin: () => void
+  onLogout: () => void
 }
 
-function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogin }: RevealBodyProps) {
+function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogin, onLogout }: RevealBodyProps) {
   const { loading, error, assignment, missing } = useMyAssignment(nameNormalized)
   const [recipient, setRecipient] = useState<Participant | null>(null)
   const [recipientError, setRecipientError] = useState('')
@@ -153,15 +155,21 @@ function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogi
       </section>
 
       {isAdmin ? (
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-3">
           <Button type="button" variant="secondary" onClick={onGoAdmin}>
             Panel del Admin
           </Button>
+          <Button type="button" variant="ghost" onClick={onLogout}>
+            Cerrar sesión
+          </Button>
         </div>
       ) : (
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-3">
           <Button type="button" variant="ghost" onClick={onGoAdminLogin}>
             Acceso Admin
+          </Button>
+          <Button type="button" variant="ghost" onClick={onLogout}>
+            Cambiar de usuario
           </Button>
         </div>
       )}

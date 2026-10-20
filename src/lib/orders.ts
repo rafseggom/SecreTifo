@@ -58,12 +58,14 @@ export async function getMyOrder(giverNameNormalized: string): Promise<Order | n
     .from('orders')
     .select('*')
     .eq('giver_name_normalized', giverNameNormalized)
-    .single()
+    .maybeSingle()
 
   if (error) {
     if (error.code === 'PGRST116') return null
     throw error
   }
+
+  if (!data) return null
 
   return {
     type: data.type,

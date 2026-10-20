@@ -87,7 +87,7 @@ export function JerseyOrderForm({ giverNameNormalized }: JerseyOrderFormProps) {
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         <Field
           label="Tu pedido"
-          helper="Copia y rellena la plantilla:"
+          helper="Copia y rellena la plantilla (intenta que esté bien, la va a leer el xino, no yo)."
           error={submitError || undefined}
         >
           {({ id, describedBy, invalid }) => (

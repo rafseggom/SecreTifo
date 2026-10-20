@@ -31,12 +31,14 @@ import { Notice } from '../components/Notice'
 import { Button } from '../components/Button'
 import { ParticipantRow } from '../components/ParticipantRow'
 import { ParticipantTableRow } from '../components/ParticipantTableRow'
+import { DrawConfirmDialog } from '../components/DrawConfirmDialog'
 import { useOrdersAdmin } from '../hooks/useOrdersAdmin'
 import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorCode } from '../lib/orders'
 import { downloadCsv, downloadText, ordersCsvFilename, giftsTxtFilename } from '../lib/download'
 import { buildOrdersExport, buildGiftsTxtExport } from '../domain/exportOrders'
 import { errorCopy, downloadErrorCopy } from '../lib/errorCopy'
 import { clearAllSession } from '../lib/session'
+import { runDraw } from '../lib/draw'
 
 const TRUST_NOTE = 'La lista no incluye quién regala a quién.'
 
@@ -54,6 +56,10 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
   const [downloadedName, setDownloadedName] = useState('')
   const [downloadError, setDownloadError] = useState('')
 
+  // Draw state
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [drawSubmitting, setDrawSubmitting] = useState(false)
+
   // Liberar state
   const [liberarError, setLiberarError] = useState<string | null>(null)
   const [liberarSuccess, setLiberarSuccess] = useState<string | null>(null)
@@ -61,6 +67,25 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
   const failure = error ? errorCopy(error) : null
   const downloadFailure = downloadError ? downloadErrorCopy(downloadError) : null
   const percent = total === 0 ? 0 : (filled / total) * 100
+  const shortfall = 3 - total
+
+  async function handleConfirmDraw() {
+    setDrawSubmitting(true)
+    try {
+      await runDraw(allParticipants)
+      setDialogOpen(false)
+    } catch (thrown) {
+      const code =
+        thrown instanceof Error && 'code' in thrown
+          ? String((thrown as { code: unknown }).code)
+          : 'unknown'
+      // Reuse error display mechanism
+      setDownloadError(code)
+      setDialogOpen(false)
+    } finally {
+      setDrawSubmitting(false)
+    }
+  }
 
   async function handleDownload() {
     if (downloading) return
@@ -221,6 +246,28 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
           </Button>
         )}
 
+        {/* Empezar Sorteo - only in lobby status and >= 3 participants */}
+        {eventStatus === 'lobby' && total >= 3 && (
+          <Button
+            type="button"
+            variant="primary"
+            loading={drawSubmitting}
+            onClick={() => setDialogOpen(true)}
+          >
+            Empezar Sorteo
+          </Button>
+        )}
+
+        {eventStatus === 'lobby' && total < 3 && (
+          <Notice tone="warning">
+            {`Necesitas al menos 3 participantes para sortear. Faltan ${shortfall}.`}
+          </Notice>
+        )}
+
+        {eventStatus === 'drawn' && (
+          <Notice tone="info">El sorteo ya se ha realizado.</Notice>
+        )}
+
         {filled === 0 && !loading ? (
           <p className="text-label text-slate-600">Todavía no hay pedidos que descargar.</p>
         ) : null}
@@ -295,6 +342,13 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
           </div>
         </Card>
       )}
+    <DrawConfirmDialog
+      open={dialogOpen}
+      count={total}
+      submitting={drawSubmitting}
+      onConfirm={handleConfirmDraw}
+      onCancel={() => setDialogOpen(false)}
+    />
     </Screen>
   )
 }

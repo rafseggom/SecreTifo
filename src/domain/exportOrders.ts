@@ -78,3 +78,15 @@ export function buildOrdersExport(orders: ExportedOrder[]): string {
   ]
   return BOM + rows.join(EOL) + EOL
 }
+
+/**
+ * Builds an anonymous gift list for the .txt download.
+ * One line per gift, no participant identity, no pairing info.
+ * Format: "Tipo · Equipo · Temporada · Nombre · Dorsal · Talla"
+ */
+export function buildGiftsTxtExport(orders: ExportedOrder[]): string {
+  const lines = orders.map((o) =>
+    `${o.type} · ${o.team} · ${o.season} · ${o.printedName} · ${o.number} · ${o.size}`
+  )
+  return lines.join('\n') + '\n'
+}

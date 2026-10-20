@@ -1,11 +1,7 @@
 /**
- * Admin Setup Page — creates the event with the organiser's anonymous uid as adminUid.
- *
- * Flow: validate secret → ensureSignedIn() → create events/main (adminUid, status=lobby,
- * participantCount=0) → store the Admin flag → the `/admin/setup` route guard forwards
- * to /admin as soon as the session observes the new event. No participant document is
- * created for the admin (D-03). The secret is shared: any browser can later log in at
- * /admin/login with it, regardless of which browser created the event.
+ * Admin Setup Page — creates the event if it doesn't exist.
+ * This is a fallback for when the Admin wants to create the event before anyone joins.
+ * In normal flow, the event is created when the first participant registers.
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -16,22 +12,20 @@ import { Input } from '../components/Input'
 import { Button } from '../components/Button'
 import { Notice } from '../components/Notice'
 import { useSession } from '../session/SessionProvider'
-import { ensureSignedIn, setAdminSecretValidated } from '../lib/session'
-import { db } from '../lib/firebase'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { setAdminSecretValidated } from '../lib/session'
+import { supabase } from '../lib/supabase'
 
 const INVALID_SECRET_COPY = 'Clave secreta inválida. Inténtalo de nuevo.'
 const CREATE_ERROR_COPY = 'No se ha podido crear el evento.'
-const PERMISSION_COPY = 'No tienes permiso para crear el evento.'
 
 function errorCopy(code: string): { message: string; canRetry: boolean } {
-  if (code === 'permission-denied') {
-    return { message: PERMISSION_COPY, canRetry: false }
+  if (code === 'permission-denied' || code === '42501') {
+    return { message: 'No tienes permiso para crear el evento.', canRetry: false }
   }
-  if (code === 'unavailable') {
+  if (code === 'unavailable' || code === '57P01' || code === '57P02' || code === '57P03') {
     return { message: 'Sin conexión. Vuelve a intentarlo cuando recuperes la red.', canRetry: true }
   }
-  if (code === 'resource-exhausted') {
+  if (code === 'resource-exhausted' || code === '53200' || code === '53201' || code === '53202') {
     return { message: 'Hemos alcanzado el límite de consultas por hoy. Inténtalo más tarde.', canRetry: false }
   }
   return { message: CREATE_ERROR_COPY, canRetry: true }
@@ -49,15 +43,12 @@ export default function AdminSetupPage() {
 
   // An existing event must not be re-created. The route guard renders this page in
   // that state when the local admin flag is missing, so point the user at the login
-  // instead of showing a form whose `setDoc` would write to a live event.
-  // While submitting, keep the loading form: the local snapshot can expose the new
-  // event before `setDoc` resolves, and showing the "already exists" panel in that
-  // window would be a confusing flash right after creating it.
+  // instead of showing a form whose `insert` would write to a live event.
   if (eventStatus !== null && !submitting) {
     return (
       <Screen title="El evento ya existe" titleRole="display">
         <p className="mt-2 text-body text-slate-600">
-          Ya hay un evento creado. Confirma la clave secreta para entrar al panel.
+          Ya hay un evento creado. Introduce la contraseña de administrador para entrar al panel.
         </p>
 
         <Card className="mt-6">
@@ -82,7 +73,7 @@ export default function AdminSetupPage() {
       return
     }
 
-    // Validate secret against VITE_ADMIN_SECRET (D-01, D-04)
+    // Validate secret against VITE_ADMIN_SECRET
     if (trimmed !== import.meta.env.VITE_ADMIN_SECRET) {
       setFieldError(INVALID_SECRET_COPY)
       inputRef.current?.focus()
@@ -92,21 +83,17 @@ export default function AdminSetupPage() {
     setSubmitting(true)
 
     try {
-      // Get anonymous uid (D-02)
-      const uid = await ensureSignedIn()
-
-      // Create events/main document (D-06) - admin is NOT a participant (D-03)
-      await setDoc(doc(db, 'events/main'), {
-        adminUid: uid,
+      // Create events/main row
+      const { error } = await supabase.from('event').insert({
+        id: 'main',
+        admin_secret_validated: true,
         status: 'lobby',
-        createdAt: serverTimestamp(),
-        participantCount: 0,
+        created_at: new Date().toISOString(),
+        participant_count: 0,
       })
+      if (error) throw error
 
-      // Success: persist the admin gate now (the secret was validated above). The
-      // `/admin/setup` guard forwards to /admin once the session observes the event,
-      // so a reload between the write and that snapshot cannot strand the organiser.
-      // `submitting` stays true until the guard unmounts this page.
+      // Success: persist the admin gate now
       setAdminSecretValidated()
     } catch (thrown) {
       const code =
@@ -123,7 +110,7 @@ export default function AdminSetupPage() {
   }
 
   return (
-    <Screen title="Crear evento SecretKit" titleRole="display">
+    <Screen title="Crear evento SecreTifo" titleRole="display">
       <p className="mt-2 text-body text-slate-600">
         Eres el organizador. Define la clave del evento y crea la sala para que tus amigos se unan.
       </p>

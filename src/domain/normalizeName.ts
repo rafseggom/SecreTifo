@@ -5,7 +5,7 @@
  * explicit acceptance requirement, not an extra: "Pepe  Pérez" and "Pepe Pérez"
  * must resolve to the same name (and therefore the same uniqueness check).
  *
- * Pure module: no React import, no `firebase/*` import.
+ * Pure module: no React import, no Supabase import.
  */
 export function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase()

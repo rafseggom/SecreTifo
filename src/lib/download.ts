@@ -19,9 +19,9 @@
  * file diverge at the day boundary, the one instant where it matters.
  */
 
-/** Saves `csv` as `filename`. One object URL per download, released one task after the click. */
-export function downloadCsv(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+/** Saves `text` as `filename` with given MIME type. */
+export function downloadText(filename: string, text: string, mimeType = 'text/plain;charset=utf-8'): void {
+  const blob = new Blob([text], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -32,19 +32,28 @@ export function downloadCsv(filename: string, csv: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+/** Saves `csv` as `filename`. */
+export function downloadCsv(filename: string, csv: string): void {
+  downloadText(filename, csv, 'text/csv;charset=utf-8')
+}
+
 /**
- * The orders file name, `pedidos-{AAAA-MM-DD}.csv`, from the LOCAL calendar date of the
- * given moment (IN-03).
- *
- * Local, not UTC: the organiser reads the name against their own calendar, so a download
- * just after local midnight must not be named with the previous UTC date. The
- * `AAAA-MM-DD` shape is kept even though the value is local, because a locale format
- * would leak an ambiguous ordering into the name the vendedor receives — the two
- * concerns (which day, how it is written) are independent.
+ * The orders file name, `pedidos-{AAAA-MM-DD}.csv`, from the LOCAL calendar date.
  */
 export function ordersCsvFilename(date = new Date()): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `pedidos-${year}-${month}-${day}.csv`
+}
+
+/**
+ * The gift list file name, `regalos-{AAAA-MM-DD}.txt`, from the LOCAL calendar date.
+ * Shown only when all participants have submitted their orders.
+ */
+export function giftsTxtFilename(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `regalos-${year}-${month}-${day}.txt`
 }

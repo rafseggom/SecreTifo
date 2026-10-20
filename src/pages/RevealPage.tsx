@@ -3,18 +3,20 @@
  * person's real preferences, plus the order form (S6).
  *
  * Access here is a route guard only (App.tsx redirects unless the event is drawn); the
- * Firestore rules are the authority (01-PATTERNS §5: guards are UX, not access control).
+ * RLS policies are the authority (01-PATTERNS §5: guards are UX, not access control).
  *
- * The pairing is obtained in exactly one way: a document read by id. There is no
+ * The pairing is obtained in exactly one way: a row read by id. There is no
  * reference of the enumerating kind and no query here — the rules deny the enumeration to
  * everyone, the Admin included, so such a read would fail for every user.
  *
- * Two reads, chained and never concurrent: `useMyAssignment(uid)` yields the recipient id,
- * and only then is the recipient's document read (its id is unknown before that first read
+ * Two reads, chained and never concurrent: `useMyAssignment(nameNormalized)` yields the recipient id,
+ * and only then is the recipient's row read (its id is unknown before that first read
  * resolves).
  *
  * Copy is contract, and so is this: user-supplied names and teams wrap, and the
  * single-line-clipping class is forbidden on them anywhere in the phase.
+ *
+ * CHANGED: Now uses nameNormalized (stable identity) instead of uid.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -34,7 +36,7 @@ import type { Participant } from '../domain/types'
 const UNSTATED = 'Sin indicar'
 
 /**
- * WR-05: the recipient's document can legitimately be absent (a partial restore, an
+ * WR-05: the recipient's row can legitimately be absent (a partial restore, an
  * operator delete, or the post-draw window WR-03 closes). `getParticipant` returns
  * `null` for that case instead of throwing, so it must be recorded as a terminal
  * state of its own — inferring it from `recipient === null` left the screen on
@@ -44,35 +46,37 @@ const RECIPIENT_NOT_FOUND = 'not-found'
 
 export default function RevealPage() {
   const navigate = useNavigate()
-  const { uid } = useSession()
+  const { nameNormalized } = useSession()
   const [reloadKey, setReloadKey] = useState(0)
 
-  if (!uid) return null
+  if (!nameNormalized) return null
 
   return (
     <RevealBody
       key={reloadKey}
-      uid={uid}
+      nameNormalized={nameNormalized}
       isAdmin={isAdminSecretValidated()}
       onGoAdmin={() => navigate('/admin')}
+      onGoAdminLogin={() => navigate('/admin/login')}
       onRetry={() => setReloadKey((key) => key + 1)}
     />
   )
 }
 
 type RevealBodyProps = {
-  uid: string
+  nameNormalized: string
   isAdmin: boolean
   onGoAdmin: () => void
   onRetry: () => void
+  onGoAdminLogin: () => void
 }
 
-function RevealBody({ uid, isAdmin, onGoAdmin, onRetry }: RevealBodyProps) {
-  const { loading, error, assignment, missing } = useMyAssignment(uid)
+function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogin }: RevealBodyProps) {
+  const { loading, error, assignment, missing } = useMyAssignment(nameNormalized)
   const [recipient, setRecipient] = useState<Participant | null>(null)
   const [recipientError, setRecipientError] = useState('')
   // The second read is tracked EXPLICITLY (WR-05): `recipient === null` cannot tell
-  // "still in flight" apart from "resolved with no document".
+  // "still in flight" apart from "resolved with no row".
   const [recipientLoaded, setRecipientLoaded] = useState(false)
 
   useEffect(() => {
@@ -144,7 +148,7 @@ function RevealBody({ uid, isAdmin, onGoAdmin, onRetry }: RevealBodyProps) {
         <JerseyOrderForm
           recipientSize={recipient.size}
           recipientName={recipient.name}
-          uid={uid}
+          giverNameNormalized={nameNormalized}
         />
       </section>
 
@@ -154,7 +158,13 @@ function RevealBody({ uid, isAdmin, onGoAdmin, onRetry }: RevealBodyProps) {
             Panel del Admin
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <div className="mt-6">
+          <Button type="button" variant="ghost" onClick={onGoAdminLogin}>
+            Acceso Admin
+          </Button>
+        </div>
+      )}
     </Screen>
   )
 }

@@ -10,6 +10,8 @@
  * When the event turns `drawn`, the session's pushed status makes this page return a
  * declarative `<Navigate>` to the reveal: the page never navigates by hand and never
  * schedules the transition (D-22).
+ *
+ * CHANGED: Now uses nameNormalized for participant identity.
  */
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
@@ -23,16 +25,14 @@ import { useSession } from '../session/SessionProvider'
 import { runDraw } from '../lib/draw'
 import { errorCopy } from '../lib/errorCopy'
 import { isAdminSecretValidated } from '../lib/session'
-// Namespace import keeps the two listener callsites the only textual mention of them.
 import * as lobby from '../lib/lobby'
 import type { Participant } from '../domain/types'
 
 export default function LobbyPage() {
-  const { uid, eventStatus } = useSession()
+  const { nameNormalized, eventStatus } = useSession()
   const navigate = useNavigate()
 
   const [participants, setParticipants] = useState<Participant[] | null>(null)
-  const [adminUid, setAdminUid] = useState<string | null>(null)
   const [errorCode, setErrorCode] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -49,7 +49,9 @@ export default function LobbyPage() {
       (code) => setErrorCode(code),
     )
     const unsubscribeEvent = lobby.subscribeEvent(
-      (event) => setAdminUid(event ? event.adminUid : null),
+      (_event) => {
+        // Event status is handled by session
+      },
       (code) => setErrorCode(code),
     )
     return () => {
@@ -71,7 +73,7 @@ export default function LobbyPage() {
     setSubmitting(true)
     setErrorCode('')
     try {
-      await runDraw((participants ?? []).map((participant) => participant.uid))
+      await runDraw(participants ?? [])
     } catch (thrown) {
       const code =
         thrown instanceof Error && 'code' in thrown
@@ -133,10 +135,10 @@ export default function LobbyPage() {
         ) : (
           participants.map((participant) => (
             <ParticipantRow
-              key={participant.uid}
+              key={participant.nameNormalized}
               name={participant.name}
-              isMe={participant.uid === uid}
-              isAdmin={participant.uid === adminUid}
+              isMe={participant.nameNormalized === nameNormalized}
+              isAdmin={false} // No more adminUid in participants
               isPending={!participant.hasOrder}
             />
           ))
@@ -172,6 +174,9 @@ export default function LobbyPage() {
               {`El sorteo necesita al menos 3 participantes. Aún faltan ${shortfall}.`}
             </Notice>
           ) : null}
+          <Button type="button" variant="ghost" onClick={() => navigate('/admin/login')} className="w-full sm:w-auto">
+            Acceso Admin
+          </Button>
         </div>
       )}
 

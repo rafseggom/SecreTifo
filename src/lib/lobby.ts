@@ -1,119 +1,152 @@
 /**
- * Realtime reads for the lobby (DRAW-01). Ordered by `nameNormalized`, NEVER by the
- * join timestamp: `serverTimestamp()` is null in local snapshots and would mis-sort
- * the just-joined row on that client (Pitfall 10).
+ * Realtime reads for the lobby. Ordered by `nameNormalized`.
  *
- * Both functions return the `onSnapshot` unsubscribe and accept the same optional
- * failure callback. Each propagates the Firestore code so the UI can apply the S8
- * error taxonomy — never a bare `console.error` as the only treatment, and never a
- * silent drop: a `permission-denied` on the event subscription would otherwise leave
- * the app with no session status and nothing on screen explaining it.
+ * Uses Supabase realtime subscriptions.
  */
-import { collection, doc, getDoc, getDocs, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { db } from './firebase'
+import { supabase } from './supabase'
 import type { EventDoc, Participant } from '../domain/types'
 
-function toParticipant(snapshot: {
-  id: string
-  data: () => unknown
-}): Participant {
-  return { uid: snapshot.id, ...(snapshot.data() as Omit<Participant, 'uid'>) }
+function toParticipant(row: Record<string, unknown>): Participant {
+  return {
+    name: row.name as string,
+    nameNormalized: row.name_normalized as string,
+    size: row.size as Participant['size'],
+    likedTeams: row.liked_teams as string,
+    forbiddenTeams: row.forbidden_teams as string,
+    joinedAt: row.joined_at as string,
+    hasOrder: row.has_order as boolean,
+    pinHash: row.pin_hash as string | undefined,
+  }
+}
+
+function toEvent(row: Record<string, unknown>): EventDoc {
+  return {
+    adminSecretValidated: row.admin_secret_validated as boolean,
+    status: row.status as EventDoc['status'],
+    createdAt: row.created_at as string,
+    participantCount: row.participant_count as number,
+  }
 }
 
 export function subscribeParticipants(
   cb: (list: Participant[]) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  return onSnapshot(
-    query(collection(db, 'events', 'main', 'participants'), orderBy('nameNormalized')),
-    (snap) => cb(snap.docs.map(toParticipant)),
-    (err) => {
-      onFailure?.(err.code)
-    },
-  )
+  const channel = supabase
+    .channel('participants_changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'participants' },
+      () => {
+        // Refetch full list on any change for consistent ordering
+        fetchParticipants().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
+      },
+    )
+    .subscribe()
+
+  // Initial fetch
+  fetchParticipants().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
 }
 
-/**
- * One-shot roster read used by the unlock screen. It never subscribes: the list is
- * only needed to label the participant selector, and the PIN check happens against
- * the document read by id.
- */
-export async function listParticipants(): Promise<Participant[]> {
-  const snap = await getDocs(
-    query(collection(db, 'events', 'main', 'participants'), orderBy('nameNormalized')),
-  )
-  return snap.docs.map(toParticipant)
+async function fetchParticipants(): Promise<Participant[]> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .order('name_normalized')
+
+  if (error) throw error
+  return (data ?? []).map(toParticipant)
 }
 
 export function subscribeEvent(
   cb: (event: EventDoc | null) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  return onSnapshot(
-    doc(db, 'events/main'),
-    (snap) => cb(snap.exists() ? (snap.data() as EventDoc) : null),
-    (err) => {
-      onFailure?.(err.code)
-    },
-  )
+  const channel = supabase
+    .channel('event_changes')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'event' },
+      (payload) => {
+        if (payload.new) {
+          cb(toEvent(payload.new as Record<string, unknown>))
+        } else {
+          cb(null)
+        }
+      },
+    )
+    .subscribe()
+
+  // Initial fetch
+  fetchEvent().then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
 }
 
-/**
- * One-shot read of `events/main` used during session resolution.
- *
- * Without it the session finished loading before the subscription's first snapshot,
- * so the routes rendered with `eventStatus === null` for a moment and the Admin
- * guards (`/admin`, `/admin/login`) redirected a legitimate Admin home. Reading the
- * event first makes the very first render authoritative; the subscription then keeps
- * it live.
- */
 export async function getEvent(): Promise<EventDoc | null> {
-  const snap = await getDoc(doc(db, 'events/main'))
-  return snap.exists() ? (snap.data() as EventDoc) : null
+  return fetchEvent()
 }
 
-/**
- * Reads ONE participant by document id (01-05 Task 3).
- *
- * Enumeration on this collection IS legal for an authenticated member, but the reveal
- * needs a single, known person — one concrete individual, not a list. A query would be
- * extra work and a subscription would be a connection the screen does not need, so this
- * is the same document-by-id shape as `getMyAssignment`.
- *
- * The two subscriptions above and their error callbacks are untouched: this delta adds
- * no subscription and does not re-define the existing ones (01-04 already wired them).
- */
-export async function getParticipant(uid: string): Promise<Participant | null> {
-  const snap = await getDoc(doc(db, 'events', 'main', 'participants', uid))
-  if (!snap.exists()) return null
-  return toParticipant(snap)
+async function fetchEvent(): Promise<EventDoc | null> {
+  const { data, error } = await supabase.from('event').select('*').single()
+  if (error) {
+    if (error.code === 'PGRST116') return null // No rows found
+    throw error
+  }
+  return toEvent(data)
 }
 
-/**
- * OBSERVES one participant document (CR-02), the subscription counterpart of
- * `getParticipant`. The session needs this because joining writes
- * `participants/{uid}` *after* the session has already sampled it: without a live
- * view, a participant who just joined is bounced back to `/preferences` by the
- * route guard.
- *
- * `cb` receives `null` when the document does not exist — including after a delete,
- * which the collision rollback performs. The caller decides what that means; the
- * session only ever flips `hasPreferences` to `true`.
- *
- * It lives here, not in `SessionProvider`, so no `firebase/*` import escapes
- * `src/lib/` (T-01-07, IN-01): the rules and every call-site stay auditable as one
- * unit.
- */
+export async function getParticipant(nameNormalized: string): Promise<Participant | null> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('name_normalized', nameNormalized)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw error
+  }
+  return toParticipant(data)
+}
+
 export function subscribeParticipant(
-  uid: string,
+  nameNormalized: string,
   cb: (participant: Participant | null) => void,
   onFailure?: (code: string) => void,
 ): () => void {
-  return onSnapshot(
-    doc(db, 'events', 'main', 'participants', uid),
-    (snap) => cb(snap.exists() ? toParticipant(snap) : null),
-    (err) => {
-      onFailure?.(err.code)
-    },
-  )
+  const channel = supabase
+    .channel(`participant_${nameNormalized}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'participants', filter: `name_normalized=eq.${nameNormalized}` },
+      (payload) => {
+        if (payload.new) {
+          cb(toParticipant(payload.new as Record<string, unknown>))
+        } else {
+          cb(null)
+        }
+      },
+    )
+    .subscribe()
+
+  // Initial fetch
+  getParticipant(nameNormalized).then(cb).catch((err) => onFailure?.(err.code ?? 'unknown'))
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * One-shot roster read used by the login screen to show existing participants.
+ */
+export async function listParticipants(): Promise<Participant[]> {
+  return fetchParticipants()
 }

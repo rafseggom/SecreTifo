@@ -26,10 +26,12 @@ type ScreenProps = {
   titleRole?: 'heading' | 'display'
   /** Set when the screen renders a sticky bottom CTA, to reserve its clearance. */
   stickyCta?: boolean
+  /** Use wider container (max-w-6xl) for admin tables and wide content. */
+  wide?: boolean
   children?: ReactNode
 }
 
-export function Screen({ title, titleRole = 'heading', stickyCta = false, children }: ScreenProps) {
+export function Screen({ title, titleRole = 'heading', stickyCta = false, wide = false, children }: ScreenProps) {
   const titleClasses =
     titleRole === 'display'
       ? 'text-display font-semibold tracking-[-0.03em] leading-[1.1] text-balance'
@@ -37,9 +39,9 @@ export function Screen({ title, titleRole = 'heading', stickyCta = false, childr
 
   return (
     <main
-      className={`mx-auto w-full max-w-lg px-4 pt-6 sm:px-6 sm:pt-10${
+      className={`mx-auto w-full px-4 pt-6 sm:px-6 sm:pt-10${
         stickyCta ? ' pb-32' : ' pb-10'
-      }`}
+      } ${wide ? 'max-w-6xl' : 'max-w-lg'}`}
     >
       <Brand />
       <h1 className={`mt-8 text-foreground ${titleClasses}`}>{title}</h1>

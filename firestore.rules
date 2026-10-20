@@ -1,8 +1,6 @@
 rules_version = '2';
 
 // SecretKit Firestore Security Rules — DEFAULT DENY (D-06, SEC-01).
-// Written alongside the schema in the same commit, not at the end.
-// Every rule below is conditional; anything not matched here is denied.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -10,39 +8,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // SHARED-PASSWORD MODEL (accepted risk): the Admin secret is a UI gate that ships
-    // in the public bundle, so Firestore cannot treat it as a credential. Every
-    // authenticated member may perform the Admin operations below; the panel only
-    // shows them after the secret is entered. Pairing privacy is enforced separately
-    // (assignments get/list) and does NOT depend on this function.
-    //
-    // Consequence: a participant with devtools can read orders, liberate participants,
-    // run the draw or write assignments. Accepted for this friends-only event.
-    function canAdmin() {
-      return isSignedIn();
+    // Admin secret: "admin123" (shared-password model)
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin_secret == 'admin123';
     }
 
-    // events/main — a single fixed document; the id is literally "main" (D-04).
-    // A wildcard would admit documents that can never legitimately exist.
+    // Helper: get participant by nameNormalized
+    function getParticipant(nameNormalized) {
+      return get(/databases/$(database)/documents/events/main/participants/$(nameNormalized));
+    }
+
+    // Helper: is owner of participant
+    function isOwner(nameNormalized) {
+      return isSignedIn() && getParticipant(nameNormalized).data.ownerUid == request.auth.uid;
+    }
+
+    // Helper: event exists and is in lobby
+    function eventInLobby() {
+      return exists(/databases/$(database)/documents/events/main) &&
+             get(/databases/$(database)/documents/events/main).data.status == 'lobby';
+    }
+
+    // Helper: event exists and is drawn
+    function eventDrawn() {
+      return exists(/databases/$(database)/documents/events/main) &&
+             get(/databases/$(database)/documents/events/main).data.status == 'drawn';
+    }
+
     match /events/main {
       allow get: if isSignedIn();
-      // No `list`: nothing should be able to enumerate events.
 
-      // Bootstrap: the FIRST user creates events/main and becomes Admin (D-02, EVENT-02).
+      // Bootstrap: FIRST user creates event and becomes admin
       allow create: if isSignedIn()
         && request.resource.data.adminUid == request.auth.uid
-        && request.resource.data.status == 'lobby';
+        && request.resource.data.status == 'lobby'
+        && request.resource.data.participantCount == 1;
 
-      // Write-once adminUid: the create above sets it; this guard is what makes it
-      // immutable afterwards. Under the shared-password model ANY authenticated member
-      // may flip status lobby -> drawn (the draw must work from any browser).
-      //
-      // WR-04: the transition is FORWARD-ONLY. `drawn` is terminal, so the Admin (via
-      // devtools, or via any future bug) cannot reopen the lobby — reopening would
-      // re-enable joining and make `runDraw`'s idempotence check pass again, after
-      // which a second draw silently overwrites every assignment and orphans the
-      // orders already placed against them.
-      allow update: if canAdmin()
+      // Update: admin can flip lobby -> drawn (forward only)
+      allow update: if isAdmin()
         && request.resource.data.adminUid == resource.data.adminUid
         && (resource.data.status == 'drawn'
           ? request.resource.data.status == 'drawn'
@@ -50,69 +53,57 @@ service cloud.firestore {
 
       allow delete: if false;
 
-      // participants — PUBLIC WITHIN THE EVENT, BY DESIGN.
-      // PREF-05 requires the giver to read the recipient's preferences and DRAW-01 needs
-      // a live list, which is why the EXPORT must be anonymous (SEC-04). Do not "tighten"
-      // this to per-document get: it breaks the lobby and the duplicate-name pre-check (Pitfall 9).
-      match /participants/{uid} {
+      // PARTICIPANTS - keyed by nameNormalized
+      match /participants/{nameNormalized} {
         allow get, list: if isSignedIn();
 
-        // D-10: the roster is FROZEN once the draw has run. A document may only be
-        // created while the event is still in the lobby.
+        // Create participant: any signed-in user, event must be in lobby (or being created in same tx)
         allow create: if isSignedIn()
-          && uid == request.auth.uid
-          && get(/databases/$(database)/documents/events/main).data.status == 'lobby'
-          && request.resource.data.name is string
-          && request.resource.data.nameNormalized is string
-          && request.resource.data.size in ['S','M','L','XL','XXL','XXXL'];
-
-        // After the draw the ONLY writable field is `hasOrder`: the order form still
-        // records its progress on this document (D-19) and saving an order is by
-        // definition a post-draw action (the form lives on /reveal). Everything the
-        // giver already ordered against — name, nameNormalized, size, likedTeams,
-        // forbiddenTeams — becomes immutable, which is what D-10 protects: without
-        // this, a participant using devtools could change the size a giver already
-        // ordered against.
-        allow update: if isSignedIn()
-          && uid == request.auth.uid
+          && nameNormalized == request.resource.data.nameNormalized
+          && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.nameNormalized is string
           && request.resource.data.size in ['S','M','L','XL','XXL','XXXL']
-          && (
-            get(/databases/$(database)/documents/events/main).data.status == 'lobby'
-            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hasOrder'])
-          );
-        // NOTE: uniqueness of nameNormalized CANNOT be expressed in rules — rules cannot
-        // query. Enforced client-side, best-effort (Pitfall 3, Open Question 1).
+          && (eventInLobby() || request.resource.data.allowBootstrap == true);
 
-        allow delete: if isSignedIn() && (uid == request.auth.uid || canAdmin()); // own delete (collision rollback) or Admin liberar
+        // Update: owner can update; after draw only hasOrder and pinHash
+        allow update: if isSignedIn()
+          && isOwner(nameNormalized)
+          && request.resource.data.name == resource.data.name
+          && request.resource.data.nameNormalized == nameNormalized
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.size in ['S','M','L','XL','XXL','XXXL']
+          && (
+            eventInLobby()
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hasOrder', 'pinHash'])
+          );
+
+        // Delete: owner (collision rollback) or admin (liberar)
+        allow delete: if isSignedIn() && (isOwner(nameNormalized) || isAdmin());
       }
 
-      // assignments — the pairing lives here, one document per giver, and NOWHERE else
-      // (D-07, SEC-01). No document anywhere ever holds the full map.
-      match /assignments/{giverUid} {
-        // A participant may read ONLY their own assignment, by document id.
-        allow get: if isSignedIn() && giverUid == request.auth.uid;
-        // NOBODY may query the collection — not other participants, not the Admin (D-06).
-        // A getDocs() here fails with permission-denied for everyone (Pitfall 4).
+      // ASSIGNMENTS - keyed by giver nameNormalized
+      match /assignments/{giverNameNormalized} {
+        // Giver reads own assignment
+        allow get: if isSignedIn() && isOwner(giverNameNormalized);
+
+        // No list for anyone
         allow list: if false;
-        // Under the shared-password model any authenticated member may write these
-        // through the draw. Reads stay private: list is denied and get is own-only.
-        allow create, update: if canAdmin();
+
+        // Admin writes via draw
+        allow create, update: if isAdmin();
+
         allow delete: if false;
       }
 
-      // orders — own-or-panel read; own write; never carries the pairing (D-06, D-18).
-      match /orders/{giverUid} {
-        allow get: if isSignedIn() && (giverUid == request.auth.uid || canAdmin());
-        allow list: if canAdmin();
+      // ORDERS - keyed by giver nameNormalized
+      match /orders/{giverNameNormalized} {
+        allow get: if isSignedIn() && (isOwner(giverNameNormalized) || isAdmin());
+        allow list: if isAdmin();
 
         allow create, update: if isSignedIn()
-          && giverUid == request.auth.uid
-          // D-15: Dorsal is a STRING (preserves leading zeros) — not an int.
+          && isOwner(giverNameNormalized)
           && request.resource.data.number is string
-          // ORDER-04 / SEC: the order document must not reveal the pairing. Forbid any
-          // recipient-bearing field outright, using the documented forbid-a-field pattern.
           && !('recipientUid' in request.resource.data)
           && !('recipientName' in request.resource.data);
 

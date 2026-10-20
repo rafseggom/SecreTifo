@@ -4,6 +4,9 @@
  * The shape of these documents is one-way: `assignments` holds one sealed target
  * per giver and NOTHING anywhere holds the full giver→recipient map (D-07, SEC-01).
  * No type below carries a `giverUid` / `recipientUid` / `recipientName` field.
+ *
+ * DOCUMENT IDS ARE NORMALIZED NAMES (nameNormalized), not Firebase Auth uids.
+ * This allows users to log in from any device/browser using their name + PIN.
  */
 
 export type Size = 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'
@@ -15,36 +18,24 @@ export type EventStatus = 'lobby' | 'drawn'
 export type Role = 'admin' | 'participant'
 
 export type Participant = {
-  uid: string
+  /** Document ID is nameNormalized (stable identity). */
   name: string
   nameNormalized: string
   size: Size
   likedTeams: string
   forbiddenTeams: string
-  joinedAt: unknown
+  joinedAt: string
   hasOrder: boolean
   /**
    * PBKDF2 hash of the participant's access PIN (`pbkdf2-sha256$iterations$salt$hash`).
-   *
-   * It is optional because participants created before the PIN feature exist, and an
-   * old document must keep working. The hash is readable by every signed-in member
-   * (the roster is public within the event), so the PIN is a casual access lock —
-   * not a replacement for Firebase Authentication.
    */
   pinHash?: string
 }
 
 export type EventDoc = {
-  adminUid: string
+  adminSecretValidated: boolean
   status: EventStatus
-  /** Write-only audit field: no UI reads it. */
-  createdAt: unknown
-  /**
-   * Written ONCE, by the bootstrap `create`, and never incremented (CR-01/IN-02:
-   * `events/main` is Admin-only for every later writer, so a non-Admin joiner may
-   * not bump it). Never read by the UI either — the lobby counts
-   * `participants.length`. Kept for schema fidelity, not for logic.
-   */
+  createdAt: string
   participantCount: number
 }
 
@@ -57,7 +48,7 @@ export type Order = {
   number: string
   size: Size
   opaqueId: string
-  submittedAt: unknown
+  submittedAt: string
 }
 
 export type OrderInput = {
@@ -69,14 +60,13 @@ export type OrderInput = {
   size: Size
 }
 
+/**
+ * Local identity stored in localStorage.
+ * Stores nameNormalized (stable) and PIN hash for unlock screen.
+ */
 export type StoredIdentity = {
-  uid: string
   name: string
-  /**
-   * Local copy of the participant's PIN hash. It lets the unlock screen work before
-   * the participant document exists (the PIN is chosen on S1, the document is created
-   * on S2) and keeps the lock available if the roster read fails.
-   */
+  nameNormalized: string
   pinHash?: string
 }
 

@@ -3,16 +3,18 @@
  *
  * Renders as a table row on ≥sm, stacked cards on <sm (responsive).
  * Includes Liberar button with Modal confirmation when eventStatus === 'lobby' && !hasOrder.
+ *
+ * FIXED: Uses React.Fragment for table row mode to avoid invalid <div> inside <tbody>.
  */
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { Badge } from './Badge'
 import { Button } from './Button'
 import { Modal } from './Modal'
 import type { Participant } from '../domain/types'
 
 interface ParticipantTableRowProps {
-  participant: Participant & { uid: string }
-  onLiberar: (uid: string, name: string) => void
+  participant: Participant
+  onLiberar: (nameNormalized: string, name: string) => void
   showLiberar: boolean
 }
 
@@ -33,7 +35,7 @@ export function ParticipantTableRow({
   }
 
   const handleConfirmLiberar = () => {
-    onLiberar(participant.uid, participant.name)
+    onLiberar(participant.nameNormalized, participant.name)
     setDialogOpen(false)
   }
 
@@ -48,73 +50,77 @@ export function ParticipantTableRow({
 
   // Responsive: table row on ≥sm, stacked card on <sm
   return (
-    <>
-      {/* Table row (≥sm) */}
-      <div className="hidden sm:table-row">
-        <td className="px-3 py-2 text-body text-slate-900 break-words">{participant.name}</td>
-        <td className="px-3 py-2 whitespace-nowrap"><Badge>{participant.size}</Badge></td>
-        <td className="px-3 py-2 text-body text-slate-600 max-w-xs truncate" title={participant.likedTeams || '—'}>
-          {likedTeamsDisplay}
-        </td>
-        <td className="px-3 py-2 text-body text-slate-600 max-w-xs truncate" title={participant.forbiddenTeams || '—'}>
-          {forbiddenTeamsDisplay}
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          <Badge className={estadoTone === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}>
-            {estadoLabel}
-          </Badge>
-        </td>
-        <td className="px-3 py-2 whitespace-nowrap">
-          {showLiberar ? (
-            <Button variant="danger" size="sm" onClick={handleLiberarClick}>
-              Liberar
-            </Button>
-          ) : (
-            <span className="text-label text-slate-400">—</span>
-          )}
-        </td>
-      </div>
-
-      {/* Stacked card (<sm) */}
-      <div className="sm:hidden">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3">
-            <div>
-              <span className="text-label text-slate-500">Nombre</span>
-              <p className="text-body text-slate-900 break-words">{participant.name}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-label text-slate-500">Talla</span>
-              <Badge>{participant.size}</Badge>
-            </div>
-            <div>
-              <span className="text-label text-slate-500">Pref.</span>
-              <p className="text-body text-slate-600 break-words" title={participant.likedTeams || '—'}>
-                {participant.likedTeams || '—'}
-              </p>
-            </div>
-            <div>
-              <span className="text-label text-slate-500">Proh.</span>
-              <p className="text-body text-slate-600 break-words" title={participant.forbiddenTeams || '—'}>
-                {participant.forbiddenTeams || '—'}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-label text-slate-500">Estado</span>
-              <Badge className={estadoTone === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}>
-                {estadoLabel}
-              </Badge>
-            </div>
-            {showLiberar && (
-              <Button variant="danger" className="w-full" onClick={handleLiberarClick}>
+    <Fragment>
+      {/* Table row (≥sm) - using Fragment to avoid invalid <div> inside <tbody> */}
+      <Fragment key={`${participant.nameNormalized}-row`}>
+        <tr className="hidden sm:table-row">
+          <td className="px-3 py-2 text-body text-slate-900 break-words">{participant.name}</td>
+          <td className="px-3 py-2 whitespace-nowrap"><Badge>{participant.size}</Badge></td>
+          <td className="px-3 py-2 text-body text-slate-600 max-w-xs truncate" title={participant.likedTeams || '—'}>
+            {likedTeamsDisplay}
+          </td>
+          <td className="px-3 py-2 text-body text-slate-600 max-w-xs truncate" title={participant.forbiddenTeams || '—'}>
+            {forbiddenTeamsDisplay}
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap">
+            <Badge className={estadoTone === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}>
+              {estadoLabel}
+            </Badge>
+          </td>
+          <td className="px-3 py-2 whitespace-nowrap">
+            {showLiberar ? (
+              <Button variant="danger" size="sm" onClick={handleLiberarClick}>
                 Liberar
               </Button>
+            ) : (
+              <span className="text-label text-slate-400">—</span>
             )}
+          </td>
+        </tr>
+      </Fragment>
+
+      {/* Stacked card (<sm) - rendered outside table via separate fragment */}
+      <Fragment key={`${participant.nameNormalized}-card`}>
+        <div className="sm:hidden">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-3">
+              <div>
+                <span className="text-label text-slate-500">Nombre</span>
+                <p className="text-body text-slate-900 break-words">{participant.name}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-label text-slate-500">Talla</span>
+                <Badge>{participant.size}</Badge>
+              </div>
+              <div>
+                <span className="text-label text-slate-500">Pref.</span>
+                <p className="text-body text-slate-600 break-words" title={participant.likedTeams || '—'}>
+                  {participant.likedTeams || '—'}
+                </p>
+              </div>
+              <div>
+                <span className="text-label text-slate-500">Proh.</span>
+                <p className="text-body text-slate-600 break-words" title={participant.forbiddenTeams || '—'}>
+                  {participant.forbiddenTeams || '—'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-label text-slate-500">Estado</span>
+                <Badge className={estadoTone === 'success' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300'}>
+                  {estadoLabel}
+                </Badge>
+              </div>
+              {showLiberar && (
+                <Button variant="danger" className="w-full" onClick={handleLiberarClick}>
+                  Liberar
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </Fragment>
 
-      {/* Modal confirmation */}
+      {/* Modal confirmation - rendered outside table */}
       <Modal
         title="Liberar participante"
         open={dialogOpen}
@@ -132,6 +138,6 @@ export function ParticipantTableRow({
           </Button>
         </div>
       </Modal>
-    </>
+    </Fragment>
   )
 }

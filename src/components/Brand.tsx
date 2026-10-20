@@ -12,7 +12,7 @@ export function Brand() {
         <JerseyIcon className="h-5 w-5" />
       </span>
       <span className="text-label font-semibold tracking-[0.08em] text-foreground">
-        SecretKit
+        SecreTifo
       </span>
     </div>
   )

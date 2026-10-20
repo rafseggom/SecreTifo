@@ -2,23 +2,20 @@
  * Global session state (D-23: React Context + hooks, no Redux/Zustand/React Query).
  *
  * `useEffect` on mount:
- *  1. resolves the silent anonymous identity (ensureSignedIn),
- *  2. reads `participants/{uid}` to know whether this uid has already joined,
- *  3. reads `events/main` once so the first render already knows whether an event
- *     exists and whether this uid is its Admin (no transient `null` gap),
- *  4. OBSERVES `participants/{uid}` so a join made after that first read is
+ *  1. loads identity from localStorage,
+ *  2. reads `participants/{nameNormalized}` to know whether this name has already joined,
+ *  3. reads `event/main` once so the first render already knows whether an event
+ *     exists and its status (no transient `null` gap),
+ *  4. OBSERVES `participants/{nameNormalized}` so a join made after that first read is
  *     reflected without a reload (CR-02),
- *  5. subscribes to `events/main` for the live event status.
+ *  5. subscribes to `event` for the live event status.
  *
  * A failed resolution sets `error` (WR-01): the routes must not render, because
  * every route assumes a resolved identity. `retryIdentity()` re-runs the whole
  * resolution and is what the boot error screen's `Reintentar` calls.
  *
- * Every Firestore access goes through `src/lib/lobby.ts`: no `firebase/*` import
+ * Every Supabase access goes through `src/lib/lobby.ts`: no `@supabase/*` import
  * escapes `src/lib/` (T-01-07, IN-01).
- *
- * EVENT-03 ordering: no Firestore read is issued until `uid !== null`, so no query
- * is ever emitted with `request.auth == null`.
  */
 import {
   createContext,
@@ -28,25 +25,25 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ensureSignedIn, loadIdentity } from '../lib/session'
+import { loadIdentity } from '../lib/session'
 import { getEvent, getParticipant, subscribeEvent, subscribeParticipant } from '../lib/lobby'
 import type { EventDoc, EventStatus, Role } from '../domain/types'
 
 export type SessionState = {
   loading: boolean
-  uid: string | null
   name: string
+  nameNormalized: string
   role: Role
   hasPreferences: boolean
   /**
-   * `null` means there is no `events/main` document yet. `App` uses that to decide
+   * `null` means there is no `event/main` row yet. `App` uses that to decide
    * whether `/admin/setup` is the only Admin entry point; collapsing "no event"
    * into `'lobby'` made the setup route unreachable.
    */
   eventStatus: EventStatus | null
   /**
-   * WR-01: the identity could not be resolved (sign-in failure or a failed first
-   * read). Non-null means NO route may render — the boot error screen owns the UI,
+   * WR-01: the identity could not be resolved (first read failure).
+   * Non-null means NO route may render — the boot error screen owns the UI,
    * because every route assumes a resolved identity.
    */
   error: string | null
@@ -62,8 +59,8 @@ const SessionContext = createContext<Session | null>(null)
 
 const INITIAL_STATE: SessionState = {
   loading: true,
-  uid: null,
   name: '',
+  nameNormalized: '',
   role: 'participant',
   hasPreferences: false,
   eventStatus: null,
@@ -82,51 +79,59 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     async function resolveIdentity() {
       try {
-        const uid = await ensureSignedIn()
-        if (cancelled) return
-
-        // Only now is a Firestore read safe: uid is non-null, so request.auth is set.
         const stored = loadIdentity()
+        if (!stored) {
+          // No stored identity - user needs to enter name
+          if (cancelled) return
+          setSession((prev) => ({ ...prev, loading: false, error: null }))
+          return
+        }
+
         // Resolve the event in the same pass. If the session became ready before the
         // subscription's first snapshot, every event-dependent guard would briefly see
         // `eventStatus === null` and redirect (notably the Admin routes).
-        const [participant, event] = await Promise.all([getParticipant(uid), getEvent()])
+        const [participant, event] = await Promise.all([
+          stored ? getParticipant(stored.nameNormalized) : Promise.resolve(null),
+          getEvent(),
+        ])
         if (cancelled) return
 
         const hasPreferences = participant !== null
-        const storedName = stored && stored.uid === uid ? stored.name : ''
-        const name = participant ? participant.name : storedName
+        const name = participant ? participant.name : stored.name
+        const nameNormalized = participant ? participant.nameNormalized : stored.nameNormalized
 
         setSession((prev) => ({
           ...prev,
           loading: false,
           error: null,
-          uid,
           name,
+          nameNormalized,
           hasPreferences,
           // `null` means no event yet, a real state the setup route depends on.
           eventStatus: event ? event.status : null,
-          role: event && event.adminUid === uid ? 'admin' : 'participant',
+          role: event && event.adminSecretValidated ? 'admin' : 'participant',
         }))
 
-        // CR-02: the join writes `participants/{uid}` AFTER this effect sampled it, so
+        // CR-02: the join writes `participants/{nameNormalized}` AFTER this effect sampled it, so
         // the one-shot read above is not enough — a participant who just joined would
         // be bounced back to `/preferences` by the route guard. A delete (the collision
         // rollback) must not un-join the session, so only `true` is ever applied.
-        unsubscribeParticipant = subscribeParticipant(
-          uid,
-          (observed) => {
-            if (!observed) return
-            setSession((prev) =>
-              prev.uid === uid
-                ? { ...prev, hasPreferences: true, name: observed.name }
-                : prev,
-            )
-          },
-          // The one-shot read already established a valid `hasPreferences`; a later
-          // subscription failure leaves that last known-good value in place rather
-          // than blanking a working session.
-        )
+        if (nameNormalized) {
+          unsubscribeParticipant = subscribeParticipant(
+            nameNormalized,
+            (observed) => {
+              if (!observed) return
+              setSession((prev) =>
+                prev.nameNormalized === nameNormalized
+                  ? { ...prev, hasPreferences: true, name: observed.name }
+                  : prev,
+              )
+            },
+            // The one-shot read already established a valid `hasPreferences`; a later
+            // subscription failure leaves that last known-good value in place rather
+            // than blanking a working session.
+          )
+        }
 
         // The event subscription is mounted only after the identity resolved.
         unsubscribeEvent = subscribeEvent((event: EventDoc | null) => {
@@ -134,20 +139,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             ...prev,
             // `null` is a real state: the event has not been created yet (setup).
             eventStatus: event ? event.status : null,
-            role: event && event.adminUid === uid ? 'admin' : 'participant',
+            role: event && event.adminSecretValidated ? 'admin' : 'participant',
           }))
         })
       } catch (thrown) {
         if (cancelled) return
         // WR-01: bound the spinner AND surface the failure. Clearing `loading` alone
-        // left `uid: null`, so the routes rendered and the entry form looked healthy
-        // while every attempt silently could not work. The error is a code, never
-        // data (no pairing value can reach it).
+        // left the routes rendering and the entry form looked healthy while every
+        // attempt silently could not work. The error is a code, never data.
         const code =
           thrown instanceof Error && 'code' in thrown
             ? String((thrown as { code: unknown }).code)
             : 'unknown'
-        setSession((prev) => ({ ...prev, loading: false, uid: null, error: code }))
+        setSession((prev) => ({ ...prev, loading: false, error: code }))
       }
     }
 

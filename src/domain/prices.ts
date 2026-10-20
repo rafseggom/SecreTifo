@@ -5,7 +5,7 @@
  * formatPrice is the SINGLE place that renders a price, so no screen can compose
  * or round one of its own.
  *
- * Pure data module: it imports nothing from the Firebase SDK and nothing from a
+ * Pure data module: it imports nothing from the Supabase SDK and nothing from a
  * UI framework, and it holds types only from the domain contract.
  */
 import type { KitType } from './types'

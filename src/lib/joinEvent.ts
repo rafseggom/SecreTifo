@@ -2,21 +2,19 @@
  * Bootstrap-or-join (D-02, D-09, EVENT-01/02/04).
  *
  * Three steps in a fixed order:
- *  1. duplicate-name pre-check OUTSIDE the transaction (Transaction.get() has no Query
- *     overload — Pitfall 3),
- *  2. transactional bootstrap-or-join, reads before writes,
- *  3. post-commit rollback that closes the TOCTOU window between two friends typing the
- *     same name within the same ~200 ms.
+ *  1. duplicate-name pre-check OUTSIDE the transaction (Supabase has no transactional queries),
+ *  2. insert participant row (or update for login),
+ *  3. post-commit verification.
  *
- * Firestore members are reached through a namespace import so the transaction call site
- * is the single, unambiguous one.
+ * CHANGED: Participant rows are now keyed by nameNormalized (stable identity).
+ * No Firebase Auth uid - just name + PIN.
  */
-import * as firestore from 'firebase/firestore'
-import { db } from './firebase'
+import { supabase } from './supabase'
 import { normalizeName } from '../domain/normalizeName'
-import type { Role, Size } from '../domain/types'
+import { hashPin, verifyPin } from '../domain/pin'
+import type { Role, Size, Participant } from '../domain/types'
 
-export type JoinResult = { role: Role }
+export type JoinResult = { role: Role; participant: Participant }
 
 /**
  * The three error copies the UI renders, exported so the copy shown and the error
@@ -27,106 +25,263 @@ export type JoinResult = { role: Role }
 export const ERR_NAME_TAKEN = 'Ese nombre ya está en uso en el evento. Prueba con otro.'
 export const ERR_NAME_RACE = 'Ese nombre acaba de ser usado por otra persona. Prueba con otro.'
 export const ERR_EVENT_CLOSED = 'El sorteo ya se ha realizado: el grupo está cerrado.'
+export const ERR_WRONG_PIN = 'PIN incorrecto. Inténtalo de nuevo.'
+export const ERR_PROFILE_CLAIMED = 'Este perfil ya tiene dueño. Si eres tú, usa tu PIN.'
 
 /**
  * The duplicate-name pre-check, shared by S1's form and this file's step 1 so the
- * two can never diverge. It is the step-1 query exactly: documents matching the
+ * two can never diverge. It is the step-1 query exactly: rows matching the
  * NORMALISED name. The comparison is always on the normalised form — never the
  * original text — and accents are NOT folded (the contract's stated limit).
- * Permitted outside a transaction because the rules allow `list` on participants.
- *
- * `excludeUid` is the caller's OWN uid (CR-02): a participant re-submitting their
- * name is the same person, not a collision. Without it the pre-check answered
- * «Ese nombre ya está en uso» about the user's own document. `limit(2)` — not 1 —
- * is what makes the exclusion reliable when the caller and one other person share
- * the name: one of the two returned documents is then guaranteed to be the other.
  */
-export async function isNameTaken(name: string, excludeUid?: string): Promise<boolean> {
-  const matches = await firestore.getDocs(
-    firestore.query(
-      firestore.collection(db, 'events', 'main', 'participants'),
-      firestore.where('nameNormalized', '==', normalizeName(name)),
-      firestore.limit(2),
-    ),
-  )
-  return matches.docs.some((document) => document.id !== excludeUid)
+export async function isNameTaken(name: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('name_normalized')
+    .eq('name_normalized', normalizeName(name))
+    .limit(2)
+
+  if (error) throw error
+  return (data ?? []).length > 0
 }
 
-export async function joinEvent(
-  uid: string,
+/**
+ * Checks if a participant exists with the given name and returns their data.
+ * Used for login flow: if participant exists, verify PIN to claim ownership.
+ */
+export async function getParticipantByName(name: string): Promise<Participant | null> {
+  const nameNormalized = normalizeName(name)
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('name_normalized', nameNormalized)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw error
+  }
+  return {
+    name: data.name,
+    nameNormalized: data.name_normalized,
+    size: data.size,
+    likedTeams: data.liked_teams,
+    forbiddenTeams: data.forbidden_teams,
+    joinedAt: data.joined_at,
+    hasOrder: data.has_order,
+    pinHash: data.pin_hash,
+  }
+}
+
+/**
+ * Gets a participant by their nameNormalized (direct row read).
+ * Used for login flow where user selects from a list.
+ */
+export async function getParticipantByNameNormalized(nameNormalized: string): Promise<Participant | null> {
+  const { data, error } = await supabase
+    .from('participants')
+    .select('*')
+    .eq('name_normalized', nameNormalized)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw error
+  }
+  return {
+    name: data.name,
+    nameNormalized: data.name_normalized,
+    size: data.size,
+    likedTeams: data.liked_teams,
+    forbiddenTeams: data.forbidden_teams,
+    joinedAt: data.joined_at,
+    hasOrder: data.has_order,
+    pinHash: data.pin_hash,
+  }
+}
+
+/**
+ * Attempts to log in to an existing participant profile by verifying the PIN.
+ * Returns the participant if successful, throws if PIN is wrong or profile is claimed by another user.
+ */
+export async function loginParticipant(name: string, pin: string): Promise<Participant> {
+  const participant = await getParticipantByName(name)
+  if (!participant) {
+    throw new Error(ERR_NAME_TAKEN)
+  }
+  return loginParticipantByParticipant(participant, pin)
+}
+
+/**
+ * Attempts to log in using an already-fetched participant (by nameNormalized).
+ * Used when the UI already has the participant data from the list.
+ */
+export async function loginParticipantByNameNormalized(
+  nameNormalized: string,
+  pin: string
+): Promise<Participant> {
+  const participant = await getParticipantByNameNormalized(nameNormalized)
+  if (!participant) {
+    throw new Error(ERR_NAME_TAKEN)
+  }
+  return loginParticipantByParticipant(participant, pin)
+}
+
+/**
+ * Core login logic shared by both login methods.
+ */
+async function loginParticipantByParticipant(
+  participant: Participant,
+  pin: string
+): Promise<Participant> {
+  // If participant has no pinHash yet (legacy), allow claiming with PIN
+  if (!participant.pinHash) {
+    throw new Error(ERR_PROFILE_CLAIMED)
+  }
+
+  // Verify PIN
+  const valid = await verifyPin(pin, participant.pinHash)
+  if (!valid) {
+    throw new Error(ERR_WRONG_PIN)
+  }
+
+  return participant
+}
+
+/**
+ * Creates a new participant profile (registration).
+ * Used when name doesn't exist yet.
+ * 
+ * @param pinHash - Optional pre-hashed PIN. If not provided, prefs.pin will be hashed.
+ */
+export async function createParticipant(
   name: string,
-  prefs: { size: Size; likedTeams: string; forbiddenTeams: string; pinHash?: string },
+  prefs: { size: Size; likedTeams: string; forbiddenTeams: string; pin: string; pinHash?: string }
 ): Promise<JoinResult> {
   const nameNormalized = normalizeName(name)
 
-  // ── Step 1: duplicate-name pre-check, OUTSIDE the transaction, through the
-  // shared helper. Permitted because the rules allow `list` on participants.
-  // The caller's own document is excluded (CR-02).
-  if (await isNameTaken(name, uid)) {
+  // Check if name is taken (outside transaction for better UX)
+  if (await isNameTaken(name)) {
     throw new Error(ERR_NAME_TAKEN)
   }
 
-  const eventRef = firestore.doc(db, 'events/main')
-  const meRef = firestore.doc(db, 'events', 'main', 'participants', uid)
+  const pinHash = prefs.pinHash ?? await hashPin(prefs.pin)
+  const joinedAt = new Date().toISOString()
 
-  // ── Step 2: transactional bootstrap-or-join. The transaction re-executes on a
-  // concurrency conflict, which is what guarantees that only ONE user writes adminUid
-  // (EVENT-02); the loser re-reads the document and joins as a non-Admin participant.
-  const role = await firestore.runTransaction(db, async (tx) => {
-    const eventSnap = await tx.get(eventRef)
+  // Check event status
+  const { data: event, error: eventError } = await supabase.from('event').select('status').single()
+  if (eventError && eventError.code !== 'PGRST116') throw eventError
+  if (event?.status === 'drawn') {
+    throw new Error(ERR_EVENT_CLOSED)
+  }
 
-    if (eventSnap.exists() && eventSnap.data().status === 'drawn') {
-      // D-10: the roster is frozen once the draw has run.
-      throw new Error(ERR_EVENT_CLOSED)
-    }
+  const isFirstUser = !event
 
-    const isFirstUser = !eventSnap.exists()
-
-    if (isFirstUser) {
-      // Bootstrap only. `participantCount` is written EXACTLY ONCE, here, and never
-      // incremented afterwards (CR-01 + IN-02): `events/main` is Admin-only for
-      // every other writer, so a non-Admin joiner must never update it. The lobby
-      // derives the count from `participants.length` (LobbyPage), so the counter is
-      // schema fidelity only and cannot drift on the collision rollback.
-      tx.set(eventRef, {
-        adminUid: uid,
-        status: 'lobby',
-        createdAt: firestore.serverTimestamp(),
-        participantCount: 1,
-      })
-    }
-    // Non-Admins write NOTHING to `events/main`: the rule grants `update` to the
-    // Admin alone, and the draw is the only other writer (it flips `status`).
-
-    tx.set(meRef, {
-      name,
-      nameNormalized,
-      size: prefs.size,
-      // Stored as an empty string when the user types nothing — never null/undefined.
-      likedTeams: prefs.likedTeams,
-      forbiddenTeams: prefs.forbiddenTeams,
-      // Optional for participants created before the PIN feature. Firestore rejects
-      // `undefined`, so the field is omitted rather than written as undefined.
-      ...(prefs.pinHash ? { pinHash: prefs.pinHash } : {}),
-      joinedAt: firestore.serverTimestamp(),
-      hasOrder: false,
+  // If first user, create event
+  if (isFirstUser) {
+    const { error: createEventError } = await supabase.from('event').insert({
+      id: 'main',
+      admin_secret_validated: false,
+      status: 'lobby',
+      created_at: joinedAt,
+      participant_count: 0,
     })
+    if (createEventError) throw createEventError
+  }
 
-    return isFirstUser ? 'admin' : 'participant'
+  // Insert participant
+  const { error: participantError } = await supabase.from('participants').insert({
+    name,
+    name_normalized: nameNormalized,
+    size: prefs.size,
+    liked_teams: prefs.likedTeams,
+    forbidden_teams: prefs.forbiddenTeams,
+    pin_hash: pinHash,
+    joined_at: joinedAt,
+    has_order: false,
   })
+  if (participantError) throw participantError
 
-  // ── Step 3: close the TOCTOU window. The second committer rolls itself back and is
-  // asked for another name — never auto-suffixed, never merged (D-02).
-  const after = await firestore.getDocs(
-    firestore.query(
-      firestore.collection(db, 'events', 'main', 'participants'),
-      firestore.where('nameNormalized', '==', nameNormalized),
-    ),
-  )
-  if (after.size > 1) {
-    await firestore.deleteDoc(meRef)
+  // Increment participant count
+  const { error: countError } = await supabase.rpc('increment_participant_count')
+  if (countError) throw countError
+
+  // Post-commit TOCTOU check
+  const { data: after, error: afterError } = await supabase
+    .from('participants')
+    .select('name_normalized')
+    .eq('name_normalized', nameNormalized)
+
+  if (afterError) throw afterError
+  if ((after ?? []).length > 1) {
+    await supabase.from('participants').delete().eq('name_normalized', nameNormalized)
     throw new Error(ERR_NAME_RACE)
   }
 
-  return { role }
+  const participant: Participant = {
+    name,
+    nameNormalized,
+    size: prefs.size,
+    likedTeams: prefs.likedTeams,
+    forbiddenTeams: prefs.forbiddenTeams,
+    joinedAt,
+    hasOrder: false,
+    pinHash,
+  }
+
+  return { role: isFirstUser ? 'admin' : 'participant', participant }
+}
+
+/**
+ * Main join function: handles both new registration and login to existing profile.
+ * Returns the participant data and role.
+ * 
+ * @param name - User's name
+ * @param prefs - Preferences including raw PIN (will be hashed) or pinHash
+ * @param isLogin - If true, attempt to log in to existing profile; if false, create new
+ */
+export async function joinEvent(
+  name: string,
+  prefs: { size: Size; likedTeams: string; forbiddenTeams: string; pin: string; pinHash?: string },
+  isLogin: boolean
+): Promise<JoinResult> {
+  const existing = await getParticipantByName(name)
+
+  if (existing) {
+    if (isLogin) {
+      // Attempt login to existing profile
+      return { role: 'participant', participant: await loginParticipant(name, prefs.pin) }
+    } else {
+      // New user trying to register with taken name
+      throw new Error(ERR_NAME_TAKEN)
+    }
+  } else {
+    if (isLogin) {
+      // Login attempted but name doesn't exist
+      throw new Error(ERR_NAME_TAKEN)
+    } else {
+      // New registration
+      return createParticipant(name, prefs)
+    }
+  }
+}
+
+/**
+ * Updates an existing participant's preferences (size, likedTeams, forbiddenTeams).
+ * Used by PreferencesPage after the participant document was created on EntryPage.
+ */
+export async function updateParticipantPrefs(
+  nameNormalized: string,
+  prefs: { size: Size; likedTeams: string; forbiddenTeams: string }
+): Promise<void> {
+  const { error } = await supabase
+    .from('participants')
+    .update({
+      size: prefs.size,
+      liked_teams: prefs.likedTeams,
+      forbidden_teams: prefs.forbiddenTeams,
+    })
+    .eq('name_normalized', nameNormalized)
+
+  if (error) throw error
 }

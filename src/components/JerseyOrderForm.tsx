@@ -12,6 +12,8 @@
  *
  * D-16: the Player/XXXL notice is non-blocking — the submit button stays enabled, the
  * chosen size is never mutated, and nothing is auto-corrected.
+ *
+ * CHANGED: Now uses giverNameNormalized (stable identity) instead of uid.
  */
 import { useEffect, useState, type FormEvent } from 'react'
 import { Card } from './Card'
@@ -46,13 +48,13 @@ type JerseyOrderFormProps = {
   recipientSize: Size
   /** The recipient's name, for the size helper. */
   recipientName: string
-  /** The signed-in giver's uid; it keys the idempotent order document. */
-  uid: string
+  /** The signed-in giver's nameNormalized; it keys the idempotent order document. */
+  giverNameNormalized: string
 }
 
 type Errors = { type?: string; team?: string }
 
-export function JerseyOrderForm({ recipientSize, recipientName, uid }: JerseyOrderFormProps) {
+export function JerseyOrderForm({ recipientSize, recipientName, giverNameNormalized }: JerseyOrderFormProps) {
   const [saved, setSaved] = useState<OrderInput | null>(null)
   const [type, setType] = useState<KitType | ''>('')
   const [team, setTeam] = useState('')
@@ -69,7 +71,7 @@ export function JerseyOrderForm({ recipientSize, recipientName, uid }: JerseyOrd
     let cancelled = false
 
     void (async () => {
-      const order = await getMyOrder(uid).catch(() => null)
+      const order = await getMyOrder(giverNameNormalized).catch(() => null)
       if (cancelled || !order) return
       setSaved({
         type: order.type,
@@ -84,7 +86,7 @@ export function JerseyOrderForm({ recipientSize, recipientName, uid }: JerseyOrd
     return () => {
       cancelled = true
     }
-  }, [uid])
+  }, [giverNameNormalized])
 
   const showD16 = type !== '' && isSizeUnavailableForKit(type, size)
 
@@ -110,7 +112,7 @@ export function JerseyOrderForm({ recipientSize, recipientName, uid }: JerseyOrd
     setSubmitError('')
     setSubmitting(true)
     try {
-      await submitOrder(uid, input)
+      await submitOrder(giverNameNormalized, input)
       setSaved(input)
     } catch (thrown) {
       // IN-06: branch on the Firestore code as the other screens do, so a lost connection

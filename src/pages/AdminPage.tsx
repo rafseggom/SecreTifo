@@ -4,11 +4,11 @@
  *
  * Two hard rules shape this screen:
  *
- *  - the progress is DERIVED from the participant documents (`hasOrder`), which the panel
+ *  - the progress is DERIVED from the participant rows (`has_order`), which the panel
  *    hook already subscribes to. There is no parallel count and no second subscription:
  *    the advance is never obtained by reading the orders (D-19).
- *  - the screen never touches the pairing collection. The route guard is UX; the authority
- *    is the server rule, which (shared-password model) grants the order enumeration to
+ *  - the screen never touches the pairing table. The route guard is UX; the authority
+ *    is the server RLS policy, which grants the order enumeration to
  *    any authenticated member and denies the pairing enumeration to everyone.
  *
  * The file is composed exclusively by the pure serialiser (`buildOrdersExport`) and handed
@@ -19,6 +19,8 @@
  * Each press of the button runs its own read and composes its own string, so a download
  * started while a new order is being written serialises the snapshot it read and not a
  * mixed state; the loading state blocks a second click while the first is in flight.
+ *
+ * CHANGED: Now uses nameNormalized instead of uid for participant identification.
  */
 import { useState } from 'react'
 import { useSession } from '../session/SessionProvider'
@@ -30,8 +32,8 @@ import { ParticipantRow } from '../components/ParticipantRow'
 import { ParticipantTableRow } from '../components/ParticipantTableRow'
 import { useOrdersAdmin } from '../hooks/useOrdersAdmin'
 import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorCode } from '../lib/orders'
-import { downloadCsv, ordersCsvFilename } from '../lib/download'
-import { buildOrdersExport } from '../domain/exportOrders'
+import { downloadCsv, downloadText, ordersCsvFilename, giftsTxtFilename } from '../lib/download'
+import { buildOrdersExport, buildGiftsTxtExport } from '../domain/exportOrders'
 import { errorCopy, downloadErrorCopy } from '../lib/errorCopy'
 
 const TRUST_NOTE = 'La lista no incluye quién regala a quién.'
@@ -78,11 +80,32 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
     }
   }
 
-  async function handleLiberar(uid: string, name: string) {
+  async function handleDownloadGifts() {
+    if (downloading) return
+    setDownloading(true)
+    setDownloadedName('')
+    setDownloadError('')
+    try {
+      const orders = await listOrdersAdmin()
+      const filename = giftsTxtFilename()
+      downloadText(filename, buildGiftsTxtExport(orders))
+      setDownloadedName(filename)
+    } catch (thrown) {
+      const code =
+        thrown instanceof Error && 'code' in thrown
+          ? String((thrown as { code: unknown }).code)
+          : 'unknown'
+      setDownloadError(code)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  async function handleLiberar(nameNormalized: string, name: string) {
     setLiberarError(null)
     setLiberarSuccess(null)
     try {
-      await liberarParticipant(uid)
+      await liberarParticipant(nameNormalized)
       setLiberarSuccess(name)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Algo ha ido mal.'
@@ -102,7 +125,7 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
   const showLiberarFor = (hasOrder: boolean) => eventStatus === 'lobby' && !hasOrder
 
   return (
-    <Screen title="Panel del Admin">
+    <Screen title="Panel del Admin" wide>
       <Card className="mt-6 flex flex-col gap-4">
         <p className="text-label text-slate-600">Pedidos guardados</p>
         {loading ? (
@@ -166,12 +189,13 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
               : `Faltan ${pending.length} participantes por rellenar`}
           </h2>
           {pending.map((person) => (
-            <ParticipantRow key={person.uid} name={person.name} isPending />
+            <ParticipantRow key={person.nameNormalized} name={person.name} isPending />
           ))}
         </Card>
       )}
 
       <div className="mt-6 flex flex-col gap-2">
+        {/* CSV for vendor - always available when there are orders */}
         <Button
           type="button"
           variant="primary"
@@ -179,8 +203,20 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
           disabled={filled === 0}
           onClick={handleDownload}
         >
-          Descargar Pedidos
+          Descargar Pedidos (CSV para vendedor)
         </Button>
+
+        {/* TXT gift list - only when ALL orders are in */}
+        {filled === total && total > 0 && (
+          <Button
+            type="button"
+            variant="secondary"
+            loading={downloading}
+            onClick={handleDownloadGifts}
+          >
+            Descargar Lista de Regalos (TXT anónimo)
+          </Button>
+        )}
 
         {filled === 0 && !loading ? (
           <p className="text-label text-slate-600">Todavía no hay pedidos que descargar.</p>
@@ -241,7 +277,7 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
               <tbody className="divide-y divide-slate-100">
                 {allParticipants.map((person) => (
                   <ParticipantTableRow
-                    key={person.uid}
+                    key={person.nameNormalized}
                     participant={person}
                     onLiberar={handleLiberar}
                     showLiberar={showLiberarFor(person.hasOrder)}

@@ -1,19 +1,15 @@
 /**
  * S2 — Preferencias (01-UI-SPEC §S2).
  *
- * The one screen that creates the participant document, and therefore the only
- * place the size is required: the `create` rule asserts the size enum, so a
- * participant without a size is impossible by construction.
+ * The screen that creates the participant row with preferences (size, teams).
+ * For new users, this is where the participant row is created.
+ * For existing users (who logged in on EntryPage), this updates their preferences.
  *
  * The size options come from `SIZES` (`src/domain/sizeGuide.ts`) through `Select`
  * — no option list is written in this file. The two team fields are optional free
  * text: they are stored literally (an empty field is the empty string, never
  * `null`/`undefined`), they are never parsed as a delimited list, and they are
  * rendered wrapped wherever they appear.
- *
- * The four distinguishable failures render in the form's error slot with the
- * fields still editable. The three thrown copies are consumed as the constants
- * `joinEvent.ts` exports, so the copy shown and the error thrown cannot drift.
  */
 import { useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -28,16 +24,17 @@ import { SizeGuideContent } from '../components/SizeGuideContent'
 import { TextButton } from '../components/TextButton'
 import { useSession } from '../session/SessionProvider'
 import { clearIdentity, loadIdentity } from '../lib/session'
-import { ERR_EVENT_CLOSED, ERR_NAME_RACE, ERR_NAME_TAKEN, joinEvent } from '../lib/joinEvent'
+import { joinEvent, updateParticipantPrefs, ERR_NAME_TAKEN, ERR_NAME_RACE, ERR_EVENT_CLOSED } from '../lib/joinEvent'
 import { errorCopy } from '../lib/errorCopy'
 import type { Size } from '../domain/types'
 
 export default function PreferencesPage() {
   const navigate = useNavigate()
-  const { uid, name: sessionName, loading: sessionLoading } = useSession()
+  const { name: sessionName, loading: sessionLoading, hasPreferences } = useSession()
 
   const stored = loadIdentity()
   const name = stored?.name ?? sessionName
+  const nameNormalized = stored?.nameNormalized
 
   const [size, setSize] = useState<Size | ''>('')
   const [likedTeams, setLikedTeams] = useState('')
@@ -65,19 +62,31 @@ export default function PreferencesPage() {
       return
     }
 
-    if (!uid) return
+    if (!nameNormalized) return
 
     setSizeError('')
     setFormError('')
     setSubmitting(true)
 
     try {
-      await joinEvent(uid, name, {
-        size,
-        likedTeams,
-        forbiddenTeams,
-        pinHash: stored?.pinHash,
-      })
+      if (hasPreferences) {
+        // Existing participant - update preferences
+        await updateParticipantPrefs(nameNormalized, {
+          size,
+          likedTeams,
+          forbiddenTeams,
+        })
+      } else {
+        // New participant - create with all data, including PIN hash from localStorage
+        const pinHash = stored?.pinHash
+        await joinEvent(name, {
+          size,
+          likedTeams,
+          forbiddenTeams,
+          pin: '', // PIN already hashed and stored in localStorage
+          pinHash,
+        }, false)
+      }
       navigate('/lobby')
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : ''
@@ -92,7 +101,6 @@ export default function PreferencesPage() {
             : 'unknown'
         const { message: errMessage } = errorCopy(code)
         setFormError(errMessage)
-        // If retryable, the Notice action will handle re-submit
       }
       setSubmitting(false)
     }
@@ -142,8 +150,8 @@ export default function PreferencesPage() {
               </Field>
 
               <Field
-                label="Equipos que te gustan"
-                helper="Opcional. Escríbelos separados por comas."
+                label="Preferencias"
+                helper="Opcional: Equipos que no te gustan, tipo de camiseta (retro, fan, etc.), color (claro, oscuro...)."
               >
                 {({ id, describedBy, invalid }) => (
                   <Input
@@ -160,7 +168,7 @@ export default function PreferencesPage() {
 
               <Field
                 label="Equipos que NO quieres"
-                helper="Opcional. Quien te regale evitará estos equipos."
+                helper="Opcional. Quien te regale evitará (si quiere) estos equipos."
               >
                 {({ id, describedBy, invalid }) => (
                   <Input
@@ -205,7 +213,7 @@ export default function PreferencesPage() {
               loading={submitting}
               className="w-full"
             >
-              {submitting ? 'Uniéndome…' : 'Unirme al evento'}
+              {submitting ? 'Guardando…' : 'Guardar preferencias'}
             </Button>
           </div>
 

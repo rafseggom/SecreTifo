@@ -3,10 +3,10 @@
  *
  * El PIN protege la identidad guardada en ESTE navegador: la app pide el PIN cada
  * vez que se abre una pestaña nueva y no deja renderizar ninguna ruta hasta que el
- * hash coincide. No es autenticación de servidor: Firestore sigue autorizando por
- * `request.auth.uid`, así que un PIN no puede abrir el perfil de un `uid` distinto.
+ * hash coincide. No es autenticación de servidor: Supabase autoriza por RLS policies,
+ * así que un PIN no puede abrir el perfil de otro usuario.
  *
- * El hash se guarda en `participants/{uid}.pinHash` usando PBKDF2-SHA256 con salt
+ * El hash se guarda en `participants.pinHash` usando PBKDF2-SHA256 con salt
  * aleatorio. Un PIN de 4–6 dígitos no tiene entropía suficiente para resistir un
  * ataque offline dedicado; las iteraciones encarecen el intento casual. No lo uses
  * como contraseña de una cuenta real.

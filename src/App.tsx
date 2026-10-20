@@ -1,29 +1,24 @@
 /**
- * Routing shell + redirect-by-state (D-22, D-23) and the S8 lost-identity
- * surface. Declarative mode (no data router).
+ * Routing shell + redirect-by-state and the lost-identity surface.
+ * Declarative mode (no data router).
  *
- * Route guards are UX, not access control — the Firestore rules are the authority.
+ * Route guards are UX, not access control — the Supabase RLS policies are the authority.
  *
  * The lost-identity state is resolved BEFORE the routes. When the stored identity
- * no longer matches the signed-in anonymous account (losing the Auth session and
- * re-signing in silently hands out a NEW uid), rendering the routes would either
- * drop the person on an empty screen or re-join them under the fresh uid and
- * answer them with a duplicate-name error that says nothing true about their
- * problem. So no route renders until they take the one way back to S1.
- *
- * Nothing is added to SessionProvider: no field, no subscription, no write. The
- * comparison is `loadIdentity()` against the session uid, and the only effect is
- * discarding the stored identity.
+ * no longer matches the session (e.g., user cleared localStorage), rendering the routes
+ * would either drop the person on an empty screen or re-join them incorrectly.
+ * So no route renders until they take the one way back to the entry page.
  */
-import { useState } from 'react'
+import { useState, useRef, useEffect, type FormEvent } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { isAdminSecretValidated, loadIdentity, clearIdentity, isUnlocked } from './lib/session'
+import { loadIdentity, isAdminSecretValidated, clearIdentity, isUnlocked, markUnlocked } from './lib/session'
 import { useSession } from './session/SessionProvider'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { FullScreenSpinner } from './components/FullScreenSpinner'
 import { Screen } from './components/Screen'
 import { Notice } from './components/Notice'
 import { Button } from './components/Button'
+import { sanitizePin, isValidPin, verifyPin } from './domain/pin'
 import EntryPage from './pages/EntryPage'
 import PreferencesPage from './pages/PreferencesPage'
 import LobbyPage from './pages/LobbyPage'
@@ -31,15 +26,14 @@ import RevealPage from './pages/RevealPage'
 import AdminPage from './pages/AdminPage'
 import AdminSetupPage from './pages/AdminSetupPage'
 import AdminLoginPage from './pages/AdminLoginPage'
-import UnlockPage from './pages/UnlockPage'
 
 export default function App() {
-  const { loading, uid, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
+  const { loading, nameNormalized, hasPreferences, eventStatus, error: sessionError, retryIdentity } =
     useSession()
   const [identityCleared, setIdentityCleared] = useState(false)
   // Bumped after a successful unlock so the gate re-renders without a reload.
   const [unlockTick, setUnlockTick] = useState(0)
-  // #1/#4: App reads localStorage during render, and <Routes> alone does not
+  // App reads localStorage during render, and <Routes> alone does not
   // re-render App on navigation. Without this, "/" and "/preferences" kept the
   // `element` computed with the identity from BEFORE the form saved it, so the
   // user stayed on the name input (and «Cambiar nombre» bounced back).
@@ -51,11 +45,11 @@ export default function App() {
 
   // WR-01 (binding must-have of 01-01): a failed identity resolution renders NO route.
   // The entry form would otherwise look healthy while every attempt silently could not
-  // work, and submitting it persisted `{ uid: '' }`.
+  // work, and submitting it persisted `{ nameNormalized: '' }`.
   if (sessionError) {
     return (
       <ErrorBoundary>
-        <Screen title="SecretKit">
+        <Screen title="SecreTifo">
           <div className="mt-6">
             <Notice
               tone="error"
@@ -74,8 +68,8 @@ export default function App() {
   }
 
   const stored = loadIdentity()
-  const identityLost = stored !== null && uid !== null && stored.uid !== uid
-  const identityPresent = stored !== null && uid !== null && stored.uid === uid
+  const identityLost = stored !== null && nameNormalized !== '' && stored.nameNormalized !== nameNormalized
+  const identityPresent = stored !== null && nameNormalized !== '' && stored.nameNormalized === nameNormalized
 
   const joinedHome = !hasPreferences
     ? '/preferences'
@@ -89,17 +83,6 @@ export default function App() {
       <ErrorBoundary>
         <Screen title="No encontramos tu identidad en este evento.">
           <div className="mt-6">
-            {/*
-              WR-08: the UI-SPEC's body copy (`01-UI-SPEC.md:553`, "Si ya estabas
-              dentro, avisa al Admin") treats "you were already inside" as the benign
-              case, but it is precisely the DEAD END: the orphaned
-              `participants/{oldUid}` still holds the name, so re-entering is answered
-              by the shared pre-check with a duplicate-name error, and no in-app path
-              frees it (the rules grant `delete` to the document's own uid only, and
-              the Admin holds no such grant). The body therefore names the one action
-              that actually resolves it. Deliberate deviation from UI-SPEC §553; the
-              title and the «Volver a entrar» action are kept verbatim.
-            */}
             <Notice tone="error">
               Vuelve a entrar con tu nombre. Si ya está en uso, avisa al Admin para que lo libere.
             </Notice>
@@ -132,21 +115,26 @@ export default function App() {
   // BEFORE the routes: no page may render its data behind an unverified PIN.
   const lockedIdentity =
     stored && stored.pinHash
-      ? { uid: stored.uid, name: stored.name, pinHash: stored.pinHash }
+      ? { name: stored.name, nameNormalized: stored.nameNormalized, pinHash: stored.pinHash }
       : null
 
-  if (identityPresent && lockedIdentity && !isUnlocked(lockedIdentity.uid)) {
+  if (identityPresent && lockedIdentity && !isUnlocked(lockedIdentity.nameNormalized)) {
     return (
       <ErrorBoundary>
-        <UnlockPage
-          stored={lockedIdentity}
-          onUnlocked={() => setUnlockTick((tick) => tick + 1)}
-          onSwitchUser={() => {
-            clearIdentity()
-            setIdentityCleared(true)
-            setUnlockTick((tick) => tick + 1)
-          }}
-        />
+        <Screen title="Introduce tu PIN para continuar">
+          <p className="mt-2 text-body text-slate-600">
+            Para acceder como <strong>{lockedIdentity.name}</strong>, introduce tu PIN.
+          </p>
+          <UnlockPage
+            stored={lockedIdentity}
+            onUnlocked={() => setUnlockTick((tick) => tick + 1)}
+            onSwitchUser={() => {
+              clearIdentity()
+              setIdentityCleared(true)
+              setUnlockTick((tick) => tick + 1)
+            }}
+          />
+        </Screen>
       </ErrorBoundary>
     )
   }
@@ -162,9 +150,6 @@ export default function App() {
           path="/preferences"
           element={
             identityPresent ? (
-              // CR-02: never render the join form for a participant whose document
-              // already exists — the join would answer with a duplicate-name error
-              // about their own name. A joined participant is forwarded by state.
               hasPreferences ? (
                 <Navigate to={joinedHome} replace />
               ) : (
@@ -196,12 +181,7 @@ export default function App() {
           element={
             /*
               Admin setup: accessible while no event exists, and also while the Admin
-              secret has not been validated yet. The second case covers two moments:
-              the hand-off right after creating the event (the local snapshot can
-              arrive before `setDoc` resolves, so unmounting here would lose the flag
-              write) and a returning organiser opening the setup URL instead of the
-              login URL (the page then shows "El evento ya existe").
-              With the event present and the flag stored, go straight to the panel.
+              secret has not been validated yet.
             */
             eventStatus === null || !isAdminSecretValidated() ? (
               <AdminSetupPage />
@@ -215,8 +195,7 @@ export default function App() {
           element={
             /*
               Admin login: accessible whenever the event exists and the local panel
-              flag is missing. The shared password is the only requirement; the
-              browser's uid no longer matters.
+              flag is missing. The shared password is the only requirement.
             */
             eventStatus !== null && !isAdminSecretValidated() ? (
               <AdminLoginPage />
@@ -231,9 +210,8 @@ export default function App() {
             /*
               IN-05: the panel is the Admin's surface (UI-SPEC S7). The guard is the
               shared-password flag, not the uid: any browser that entered the secret
-              may open it. Firestore authorizes the panel operations to authenticated
-              members (shared-password model), so this guard is UX, not the authority.
-              Pairing privacy is enforced by the assignments rules and is unchanged.
+              may open it. RLS authorizes the panel operations, so this guard is UX, not the authority.
+              Pairing privacy is enforced by the assignments RLS and is unchanged.
             */
             eventStatus !== null && isAdminSecretValidated() ? (
               <AdminPage />
@@ -245,5 +223,104 @@ export default function App() {
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>
     </ErrorBoundary>
+  )
+}
+
+/**
+ * Simple inline UnlockPage component - no separate file needed.
+ */
+function UnlockPage({
+  stored,
+  onUnlocked,
+  onSwitchUser,
+}: {
+  stored: { name: string; nameNormalized: string; pinHash: string }
+  onUnlocked: () => void
+  onSwitchUser: () => void
+}) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+
+    if (!isValidPin(pin)) {
+      setError('Escribe tu PIN de 4 a 6 dígitos.')
+      inputRef.current?.focus()
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const valid = await verifyPin(pin, stored.pinHash)
+      if (!valid) {
+        setError('PIN incorrecto. Inténtalo de nuevo.')
+        setPin('')
+        inputRef.current?.focus()
+        setSubmitting(false)
+        return
+      }
+
+      // Valid PIN
+      markUnlocked(stored.nameNormalized)
+      onUnlocked()
+    } catch {
+      setError('Error al verificar el PIN.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5 max-w-sm">
+      <div>
+        <label htmlFor="unlock-pin" className="block text-label font-medium text-foreground mb-1">
+          PIN de acceso
+        </label>
+        <input
+          ref={inputRef}
+          id="unlock-pin"
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          maxLength={6}
+          enterKeyHint="go"
+          value={pin}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPin(sanitizePin(e.target.value))}
+          className="w-full px-3 py-2 border border-border rounded-lg text-center tracking-[0.45em] focus:outline-none focus:ring-2 focus:ring-accent"
+          disabled={submitting}
+        />
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600" role="alert">{error}</p>
+      )}
+
+      <div className="flex flex-col gap-3">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full py-2.5 px-4 bg-accent text-white font-medium rounded-lg hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Verificando…' : 'Desbloquear'}
+        </button>
+        <button
+          type="button"
+          onClick={onSwitchUser}
+          className="w-full py-2.5 px-4 text-slate-600 font-medium rounded-lg hover:bg-slate-100"
+        >
+          Cambiar de usuario
+        </button>
+      </div>
+    </form>
   )
 }

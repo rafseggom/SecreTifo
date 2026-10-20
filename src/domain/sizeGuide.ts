@@ -2,7 +2,7 @@
  * D-12 / D-13 — the provider's literal reference data.
  *
  * Every value below is copied character by character from the Constraints
- * section of .planning/PROJECT.md, the source of truth for the size guide. The two
+ * section of PROJECT.md, the source of truth for the size guide. The two
  * source anomalies are the PROVIDER'S and are published literally, never
  * normalised, completed or reordered:
  *
@@ -15,7 +15,7 @@
  * Retro has no table of its own: it uses the Fan table, and that is declared
  * explicitly (RETRO_USES_FAN_TABLE) rather than inferred by a consumer.
  *
- * Pure data module: it imports nothing from the Firebase SDK and nothing from
+ * Pure data module: it imports nothing from the Supabase SDK and nothing from
  * a UI framework, and it holds types only from the domain contract.
  */
 import type { KitType, Size } from './types'

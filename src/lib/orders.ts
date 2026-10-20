@@ -8,86 +8,105 @@
  * breaking a type. That absence is what makes the order incapable of revealing the
  * pairing, not an omission to be filled in.
  *
- * The SDK is imported as a namespace so the batch and its commit stay the only
+ * CHANGED: Order rows are now keyed by giver's nameNormalized (stable identity).
+ *
+ * The Supabase client is imported so the upsert and its commit stay the only
  * textual mention of them here.
  */
-import * as firestore from 'firebase/firestore'
-import { db } from './firebase'
+import { supabase } from './supabase'
 import type { ExportedOrder, Order, OrderInput } from '../domain/types'
 
 /**
- * Saves the order. Idempotent by construction: the document id is deterministic and
- * derived from the giver, so a double tap — or a retry after `Reintentar` — overwrites
- * the same document instead of creating a duplicate (D-18).
+ * Saves the order. Idempotent by construction: the row id is deterministic and
+ * derived from the giver's nameNormalized, so a double tap — or a retry after `Reintentar` — overwrites
+ * the same row instead of creating a duplicate (D-18).
  *
  * The order and the participant's progress flag are written in the SAME batch, so the
  * Admin's progress (wave 6) and the order can never disagree: there is no instant in
  * which one is written and the other is not (Pitfall 11).
  */
-export async function submitOrder(uid: string, input: OrderInput): Promise<void> {
-  const batch = firestore.writeBatch(db)
+export async function submitOrder(giverNameNormalized: string, input: OrderInput): Promise<void> {
+  const opaqueId = crypto.randomUUID()
+  const submittedAt = new Date().toISOString()
 
-  batch.set(firestore.doc(db, 'events', 'main', 'orders', uid), {
+  // Upsert order
+  const { error: orderError } = await supabase.from('orders').upsert({
+    giver_name_normalized: giverNameNormalized,
     type: input.type,
     team: input.team,
     season: input.season,
-    printedName: input.printedName,
+    printed_name: input.printedName,
     number: input.number,
     size: input.size,
-    opaqueId: crypto.randomUUID(),
-    submittedAt: firestore.serverTimestamp(),
+    opaque_id: opaqueId,
+    submitted_at: submittedAt,
   })
+  if (orderError) throw orderError
 
-  batch.update(firestore.doc(db, 'events', 'main', 'participants', uid), { hasOrder: true })
-
-  await batch.commit()
+  // Update participant hasOrder flag
+  const { error: participantError } = await supabase
+    .from('participants')
+    .update({ has_order: true })
+    .eq('name_normalized', giverNameNormalized)
+  if (participantError) throw participantError
 }
 
-/** Reads the giver's OWN order by document id, to repaint the recap after a reload. */
-export async function getMyOrder(uid: string): Promise<Order | null> {
-  const snap = await firestore.getDoc(firestore.doc(db, 'events', 'main', 'orders', uid))
-  return snap.exists() ? (snap.data() as Order) : null
+/** Reads the giver's OWN order by row id (giverNameNormalized), to repaint the recap after a reload. */
+export async function getMyOrder(giverNameNormalized: string): Promise<Order | null> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('giver_name_normalized', giverNameNormalized)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null
+    throw error
+  }
+
+  return {
+    type: data.type,
+    team: data.team,
+    season: data.season,
+    printedName: data.printed_name,
+    number: data.number,
+    size: data.size,
+    opaqueId: data.opaque_id,
+    submittedAt: data.submitted_at,
+  }
 }
 
 /**
  * ADMIN-02 — the ONLY enumeration of orders in the project.
  *
- * One read of the order collection, then an EXPLICIT field-by-field projection to the
+ * One read of the order table, then an EXPLICIT field-by-field projection to the
  * seven exported fields. The projection is written by naming the fields rather than by
- * spreading the document: a spread would drag the send stamp into the export type, and an
+ * spreading the row: a spread would drag the send stamp into the export type, and an
  * explicit list is what makes the projection auditable at a glance.
- *
- * Under the shared-password model the server rule grants `list` on this collection to any
- * authenticated member (rules cannot see the UI password), so a participant with devtools
- * can enumerate the orders. The enumeration of the pairing collection remains nobody's:
- * no `list` for anyone and `get` only for the giver.
  *
  * The export type has no participant-identity field and no pairing field, so there is no
  * column to project one into: the privacy guarantee is structural, not a convention.
  */
 export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
-  const snap = await firestore.getDocs(firestore.collection(db, 'events', 'main', 'orders'))
+  const { data, error } = await supabase.from('orders').select('*')
+  if (error) throw error
 
-  return snap.docs.map((document) => {
-    const data = document.data() as Order
-    return {
-      opaqueId: data.opaqueId,
-      type: data.type,
-      team: data.team,
-      season: data.season,
-      printedName: data.printedName,
-      number: data.number,
-      size: data.size,
-    }
-  })
+  return (data ?? []).map((row) => ({
+    opaqueId: row.opaque_id,
+    type: row.type,
+    team: row.team,
+    season: row.season,
+    printedName: row.printed_name,
+    number: row.number,
+    size: row.size,
+  }))
 }
 
 /**
  * ADMIN-LIBERAR-01 — remove a participant from the event (Admin action).
  *
- * Deletes the participant document and decrements participantCount atomically.
+ * Deletes the participant row and decrements participantCount atomically.
  * Only allowed when event status === 'lobby' AND participant has no order (hasOrder === false).
- * Uses a transaction to ensure atomicity.
  */
 export const LIBERAR_ERRORS = {
   NOT_IN_LOBBY: 'El sorteo ya se ha realizado: no se pueden liberar participantes.',
@@ -98,30 +117,37 @@ export const LIBERAR_ERRORS = {
 
 export type LiberarErrorCode = (typeof LIBERAR_ERRORS)[keyof typeof LIBERAR_ERRORS]
 
-export async function liberarParticipant(participantUid: string): Promise<void> {
-  await firestore.runTransaction(db, async (tx) => {
-    const eventRef = firestore.doc(db, 'events/main')
-    const participantRef = firestore.doc(db, 'events', 'main', 'participants', participantUid)
+export async function liberarParticipant(nameNormalized: string): Promise<void> {
+  // Check event status first
+  const { data: event, error: eventError } = await supabase.from('event').select('status').single()
+  if (eventError) throw eventError
+  if (event?.status !== 'lobby') {
+    throw new Error(LIBERAR_ERRORS.NOT_IN_LOBBY)
+  }
 
-    const eventSnap = await tx.get(eventRef)
-    if (!eventSnap.exists()) {
+  // Check participant exists and has no order
+  const { data: participant, error: participantError } = await supabase
+    .from('participants')
+    .select('has_order')
+    .eq('name_normalized', nameNormalized)
+    .single()
+
+  if (participantError) {
+    if (participantError.code === 'PGRST116') {
       throw new Error(LIBERAR_ERRORS.NOT_FOUND)
     }
-    const eventData = eventSnap.data()
-    if (eventData.status !== 'lobby') {
-      throw new Error(LIBERAR_ERRORS.NOT_IN_LOBBY)
-    }
+    throw participantError
+  }
 
-    const participantSnap = await tx.get(participantRef)
-    if (!participantSnap.exists()) {
-      throw new Error(LIBERAR_ERRORS.NOT_FOUND)
-    }
-    const participantData = participantSnap.data()
-    if (participantData.hasOrder) {
-      throw new Error(LIBERAR_ERRORS.HAS_ORDER)
-    }
+  if (participant.has_order) {
+    throw new Error(LIBERAR_ERRORS.HAS_ORDER)
+  }
 
-    tx.delete(participantRef)
-    tx.update(eventRef, { participantCount: firestore.increment(-1) })
-  })
+  // Delete participant
+  const { error: deleteError } = await supabase.from('participants').delete().eq('name_normalized', nameNormalized)
+  if (deleteError) throw deleteError
+
+  // Decrement participant count
+  const { error: countError } = await supabase.rpc('decrement_participant_count')
+  if (countError) throw countError
 }

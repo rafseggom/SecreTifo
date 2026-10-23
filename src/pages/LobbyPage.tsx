@@ -160,6 +160,14 @@ export default function LobbyPage() {
               {`Necesitas al menos 3 participantes para sortear. Faltan ${shortfall}.`}
             </Notice>
           ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/preferences')}
+            className="w-full sm:w-auto"
+          >
+            Editar mis preferencias
+          </Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin')}>
             Panel del Admin
           </Button>
@@ -177,6 +185,14 @@ export default function LobbyPage() {
               {`El sorteo necesita al menos 3 participantes. Aún faltan ${shortfall}.`}
             </Notice>
           ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate('/preferences')}
+            className="w-full sm:w-auto"
+          >
+            Editar mis preferencias
+          </Button>
           <Button type="button" variant="ghost" onClick={() => navigate('/admin/login')} className="w-full sm:w-auto">
             Acceso Admin
           </Button>

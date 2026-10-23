@@ -37,6 +37,17 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          name: 'pages',
+          include: ['src/pages/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['src/lib/**'],
+          environment: 'jsdom',
+          globals: true,
+          setupFiles: ['src/pages/__tests__/setup.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: 'domain',
           include: ['src/domain/**/*.{test,spec}.{ts,tsx}'],
           environment: 'node',

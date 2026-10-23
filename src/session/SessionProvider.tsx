@@ -27,7 +27,7 @@ import {
 } from 'react'
 import { loadIdentity } from '../lib/session'
 import { getEvent, getParticipant, subscribeEvent, subscribeParticipant } from '../lib/lobby'
-import type { EventDoc, EventStatus, Role } from '../domain/types'
+import type { EventDoc, EventStatus, Participant, Role } from '../domain/types'
 
 export type SessionState = {
   loading: boolean
@@ -35,6 +35,13 @@ export type SessionState = {
   nameNormalized: string
   role: Role
   hasPreferences: boolean
+  /**
+   * The participant row of the current identity, when it exists.
+   *
+   * It carries the preferences (size, teams), so the preferences form can prefill
+   * itself for an edit instead of reading the row again: one read, one source of truth.
+   */
+  participant: Participant | null
   /**
    * `null` means there is no `event/main` row yet. `App` uses that to decide
    * whether `/admin/setup` is the only Admin entry point; collapsing "no event"
@@ -63,6 +70,7 @@ const INITIAL_STATE: SessionState = {
   nameNormalized: '',
   role: 'participant',
   hasPreferences: false,
+  participant: null,
   eventStatus: null,
   error: null,
 }
@@ -107,6 +115,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           name,
           nameNormalized,
           hasPreferences,
+          // The row itself: the preferences form prefills from it when editing.
+          participant,
           // `null` means no event yet, a real state the setup route depends on.
           eventStatus: event ? event.status : null,
           role: event && event.adminSecretValidated ? 'admin' : 'participant',
@@ -123,7 +133,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               if (!observed) return
               setSession((prev) =>
                 prev.nameNormalized === nameNormalized
-                  ? { ...prev, hasPreferences: true, name: observed.name }
+                  ? { ...prev, hasPreferences: true, name: observed.name, participant: observed }
                   : prev,
               )
             },

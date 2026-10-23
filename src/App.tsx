@@ -149,15 +149,15 @@ export default function App() {
         <Route
           path="/preferences"
           element={
-            identityPresent ? (
-              hasPreferences ? (
-                <Navigate to={joinedHome} replace />
-              ) : (
-                <PreferencesPage />
-              )
-            ) : (
-              <Navigate to="/" replace />
-            )
+            /*
+              The preferences screen has two modes: it CREATES the participant row for
+              a new participant and it EDITS it for one who already has preferences.
+              The identity in localStorage (plus the PIN gate above) is what opens it;
+              the mode is decided by the participant row, not by the route. Before,
+              a participant who already had preferences was bounced out of here and
+              could never change a size they had got wrong.
+            */
+            identityPresent ? <PreferencesPage /> : <Navigate to="/" replace />
           }
         />
         <Route

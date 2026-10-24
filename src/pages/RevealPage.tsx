@@ -58,6 +58,7 @@ export default function RevealPage() {
       isAdmin={isAdminSecretValidated()}
       onGoAdmin={() => navigate('/admin')}
       onGoAdminLogin={() => navigate('/admin/login')}
+      onEditPreferences={() => navigate('/preferences')}
       onRetry={() => setReloadKey((key) => key + 1)}
       onLogout={() => { clearAllSession(); navigate('/', { replace: true }); }}
     />
@@ -70,10 +71,11 @@ type RevealBodyProps = {
   onGoAdmin: () => void
   onRetry: () => void
   onGoAdminLogin: () => void
+  onEditPreferences: () => void
   onLogout: () => void
 }
 
-function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogin, onLogout }: RevealBodyProps) {
+function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogin, onEditPreferences, onLogout }: RevealBodyProps) {
   const { loading, error, assignment, missing } = useMyAssignment(nameNormalized)
   const [recipient, setRecipient] = useState<Participant | null>(null)
   const [recipientError, setRecipientError] = useState('')
@@ -154,6 +156,9 @@ function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogi
 
       {isAdmin ? (
         <div className="mt-6 flex flex-col gap-3">
+          <Button type="button" variant="secondary" onClick={onEditPreferences}>
+            Editar mis preferencias
+          </Button>
           <Button type="button" variant="secondary" onClick={onGoAdmin}>
             Panel del Admin
           </Button>
@@ -163,6 +168,9 @@ function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogi
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3">
+          <Button type="button" variant="secondary" onClick={onEditPreferences}>
+            Editar mis preferencias
+          </Button>
           <Button type="button" variant="ghost" onClick={onGoAdminLogin}>
             Acceso Admin
           </Button>

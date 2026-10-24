@@ -20,6 +20,7 @@ SecretKit permite a un grupo de amigos organizar un sorteo de amigo invisible do
 2. Introduce su PIN
 3. Si no ha rellenado preferencias → paso 2 del usuario nuevo
 4. Si ya las tenía → pantalla principal directa
+5. Puede corregir sus datos en cualquier momento: «Editar mis preferencias» (talla y equipos) desde la sala de espera o la revelación, y «Editar pedido» desde la revelación
 
 ### 🛡️ Admin
 - Acceso via `/admin` o botón en esquina → contraseña `admin123`
@@ -36,6 +37,7 @@ SecretKit permite a un grupo de amigos organizar un sorteo de amigo invisible do
 - **Exportación ciega a CSV/TXT**: Formato compatible con Excel (BOM UTF-8, separador `;`, CRLF) que nunca filtra identidades.
 - **Tiempo real**: Sala de espera con lista de participantes actualizada en vivo vía Supabase Realtime.
 - **Sin device memory**: Solo usuario + PIN. Ninguna cuenta vinculada a dispositivo/navegador.
+- **Editable**: Con la sesión iniciada, cada participante puede corregir su talla, sus equipos y su pedido. El formulario de preferencias se rellena con lo ya guardado.
 - **Admin separado**: El admin es el único que ve datos generales e inicia el sorteo.
 
 ## Stack tecnológico

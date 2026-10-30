@@ -151,6 +151,7 @@ function RevealBody({ nameNormalized, isAdmin, onGoAdmin, onRetry, onGoAdminLogi
         <h2 className="text-heading font-semibold text-slate-900">Tu pedido</h2>
         <JerseyOrderForm
           giverNameNormalized={nameNormalized}
+          defaultSize={recipient.size}
         />
       </section>
 

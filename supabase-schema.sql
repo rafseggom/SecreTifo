@@ -35,16 +35,22 @@ CREATE INDEX idx_participants_joined_at ON participants (joined_at);
 -- =============================================
 -- ORDERS TABLE
 -- =============================================
+-- order_text conserva el resumen legible (CSV/TXT y pedidos anteriores).
+-- Las columnas estructuradas alimentan el PDF del vendedor (261030).
 CREATE TABLE orders (
   giver_name_normalized TEXT PRIMARY KEY REFERENCES participants(name_normalized) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('Fan', 'Player', 'Retro')),
-  team TEXT NOT NULL,
-  season TEXT NOT NULL DEFAULT '',
+  opaque_id UUID NOT NULL DEFAULT uuid_generate_v4(),
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  order_text TEXT NOT NULL DEFAULT '',
+  size TEXT CHECK (size IS NULL OR size IN ('S', 'M', 'L', 'XL', 'XXL', 'XXXL')),
+  version TEXT CHECK (version IS NULL OR version IN ('Fan', 'Player', 'Retro')),
   printed_name TEXT NOT NULL DEFAULT '',
   number TEXT NOT NULL DEFAULT '',
-  size TEXT NOT NULL CHECK (size IN ('S', 'M', 'L', 'XL', 'XXL', 'XXXL')),
-  opaque_id UUID NOT NULL DEFAULT uuid_generate_v4(),
-  submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  patches TEXT NOT NULL DEFAULT '',
+  team TEXT NOT NULL DEFAULT '',
+  season TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  photo_url TEXT
 );
 
 -- =============================================
@@ -134,6 +140,11 @@ CREATE POLICY "orders_read_all" ON orders
 CREATE POLICY "orders_upsert_own" ON orders
   FOR INSERT WITH CHECK (true); -- App validates ownership via giver_name_normalized
 
+-- Editing an existing order is an upsert, so UPDATE needs its own policy.
+CREATE POLICY "orders_update_own" ON orders
+  FOR UPDATE USING (true)
+  WITH CHECK (true);
+
 -- -------------------------------------------------
 -- ASSIGNMENTS POLICIES (CRITICAL FOR PAIRING PRIVACY)
 -- -------------------------------------------------
@@ -145,6 +156,30 @@ CREATE POLICY "assignments_read_own" ON assignments
 
 -- NO SELECT policy for Admin or anyone else - pairing stays hidden
 -- NO INSERT/UPDATE/DELETE policies - only the draw transaction writes
+
+-- =============================================
+-- STORAGE (fotos de las camisetas)
+-- =============================================
+-- Bucket público en lectura: el Admin pinta el PDF desde el navegador. El nombre
+-- de cada objeto es un UUID aleatorio, así que no revela quién hizo el pedido.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'jerseys',
+  'jerseys',
+  TRUE,
+  8388608,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "jerseys_public_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'jerseys');
+
+CREATE POLICY "jerseys_insert" ON storage.objects
+  FOR INSERT WITH CHECK (bucket_id = 'jerseys');
+
+CREATE POLICY "jerseys_update" ON storage.objects
+  FOR UPDATE USING (bucket_id = 'jerseys');
 
 -- =============================================
 -- REALTIME PUBLICATION

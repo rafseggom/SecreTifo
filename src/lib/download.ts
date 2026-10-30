@@ -19,9 +19,8 @@
  * file diverge at the day boundary, the one instant where it matters.
  */
 
-/** Saves `text` as `filename` with given MIME type. */
-export function downloadText(filename: string, text: string, mimeType = 'text/plain;charset=utf-8'): void {
-  const blob = new Blob([text], { type: mimeType })
+/** Saves `blob` as `filename`. */
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
@@ -32,19 +31,34 @@ export function downloadText(filename: string, text: string, mimeType = 'text/pl
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+/** Saves `text` as `filename` with given MIME type. */
+export function downloadText(filename: string, text: string, mimeType = 'text/plain;charset=utf-8'): void {
+  downloadBlob(filename, new Blob([text], { type: mimeType }))
+}
+
 /** Saves `csv` as `filename`. */
 export function downloadCsv(filename: string, csv: string): void {
   downloadText(filename, csv, 'text/csv;charset=utf-8')
+}
+
+/** The LOCAL calendar date as `AAAA-MM-DD`, computed in one place. */
+function localDateStamp(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 /**
  * The orders file name, `pedidos-{AAAA-MM-DD}.csv`, from the LOCAL calendar date.
  */
 export function ordersCsvFilename(date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `pedidos-${year}-${month}-${day}.csv`
+  return `pedidos-${localDateStamp(date)}.csv`
+}
+
+/** The vendor PDF file name, `pedidos-{AAAA-MM-DD}.pdf`, from the LOCAL calendar date. */
+export function ordersPdfFilename(date = new Date()): string {
+  return `pedidos-${localDateStamp(date)}.pdf`
 }
 
 /**
@@ -52,8 +66,5 @@ export function ordersCsvFilename(date = new Date()): string {
  * Shown only when all participants have submitted their orders.
  */
 export function giftsTxtFilename(date = new Date()): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `regalos-${year}-${month}-${day}.txt`
+  return `regalos-${localDateStamp(date)}.txt`
 }

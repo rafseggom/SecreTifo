@@ -5,22 +5,91 @@
  * No structured fields, no CHECK constraints.
  */
 import { supabase } from './supabase'
-import type { ExportedOrder, Order, OrderInput } from '../domain/types'
+import { buildOrderSummary } from '../domain/exportOrders'
+import type { ExportedOrder, KitType, Order, OrderInput, Size } from '../domain/types'
+
+/**
+ * The physical shape of a row. Kept in one place so both the "my order" read and
+ * the Admin enumeration project it identically, field by field.
+ *
+ * Legacy rows (written before the structured form) have nulls in every column
+ * except the four original ones; the mappers below normalise those nulls.
+ */
+type OrderRow = {
+  opaque_id: string
+  submitted_at: string
+  order_text: string | null
+  size: Size | null
+  version: KitType | null
+  printed_name: string | null
+  number: string | null
+  patches: string | null
+  team: string | null
+  season: string | null
+  notes: string | null
+  photo_url: string | null
+}
+
+function toOrder(row: OrderRow): Order {
+  return {
+    opaqueId: row.opaque_id,
+    submittedAt: row.submitted_at,
+    orderText: row.order_text ?? '',
+    size: row.size ?? null,
+    version: row.version ?? null,
+    printedName: row.printed_name ?? '',
+    number: row.number ?? '',
+    patches: row.patches ?? '',
+    team: row.team ?? '',
+    season: row.season ?? '',
+    notes: row.notes ?? '',
+    photoUrl: row.photo_url ?? null,
+  }
+}
+
+function toExportedOrder(row: OrderRow): ExportedOrder {
+  return {
+    opaqueId: row.opaque_id,
+    orderText: row.order_text ?? '',
+    size: row.size ?? null,
+    version: row.version ?? null,
+    printedName: row.printed_name ?? '',
+    number: row.number ?? '',
+    patches: row.patches ?? '',
+    team: row.team ?? '',
+    season: row.season ?? '',
+    notes: row.notes ?? '',
+    photoUrl: row.photo_url ?? null,
+  }
+}
 
 /**
  * Saves the order. Idempotent by construction: the row id is deterministic and
  * derived from the giver's nameNormalized.
+ *
+ * `order_text` is recomputed here from the structured fields with a pure
+ * function, so the CSV/TXT and the columns can never disagree.
  */
-export async function submitOrder(giverNameNormalized: string, input: OrderInput): Promise<void> {
+export async function submitOrder(giverNameNormalized: string, input: OrderInput): Promise<Order> {
   const opaqueId = crypto.randomUUID()
   const submittedAt = new Date().toISOString()
+  const orderText = buildOrderSummary(input)
 
-  // Upsert order - only the fields that exist in the simplified schema
+  // Upsert order - structured columns + the legacy summary.
   const { error: orderError } = await supabase.from('orders').upsert({
     giver_name_normalized: giverNameNormalized,
     opaque_id: opaqueId,
     submitted_at: submittedAt,
-    order_text: input.orderText,
+    order_text: orderText,
+    size: input.size,
+    version: input.version,
+    printed_name: input.printedName,
+    number: input.number,
+    patches: input.patches,
+    team: input.team,
+    season: input.season,
+    notes: input.notes,
+    photo_url: input.photoUrl,
   })
   if (orderError) throw orderError
 
@@ -30,6 +99,8 @@ export async function submitOrder(giverNameNormalized: string, input: OrderInput
     .update({ has_order: true })
     .eq('name_normalized', giverNameNormalized)
   if (participantError) throw participantError
+
+  return { opaqueId, submittedAt, orderText, ...input }
 }
 
 /** Reads the giver's OWN order by row id (giverNameNormalized), to repaint the recap after a reload. */
@@ -47,11 +118,7 @@ export async function getMyOrder(giverNameNormalized: string): Promise<Order | n
 
   if (!data) return null
 
-  return {
-    opaqueId: data.opaque_id,
-    submittedAt: data.submitted_at,
-    orderText: data.order_text,
-  }
+  return toOrder(data as OrderRow)
 }
 
 /**
@@ -64,10 +131,7 @@ export async function listOrdersAdmin(): Promise<ExportedOrder[]> {
   const { data, error } = await supabase.from('orders').select('*')
   if (error) throw error
 
-  return (data ?? []).map((row) => ({
-    opaqueId: row.opaque_id,
-    orderText: row.order_text,
-  }))
+  return (data ?? []).map((row) => toExportedOrder(row as OrderRow))
 }
 
 /**

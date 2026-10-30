@@ -39,16 +39,49 @@ export type EventDoc = {
   participantCount: number
 }
 
+/**
+ * The structured jersey order (quick task 261030). The vendor needs four things
+ * per shirt — size, version, printed name/number and patches — plus the photo.
+ *
+ * These fields describe the SHIRT, never the person ordering it: no field here
+ * can identify the giver or the recipient.
+ */
+export type OrderInput = {
+  size: Size
+  version: KitType
+  /** Nombre impreso en la camiseta (puede ir vacío). */
+  printedName: string
+  /** Dorsal impreso (puede ir vacío). */
+  number: string
+  /** Parches; vacío significa «sin parches». */
+  patches: string
+  team: string
+  season: string
+  notes: string
+  /** URL pública de la foto de referencia, o null si no hay. */
+  photoUrl: string | null
+}
+
 export type Order = {
   opaqueId: string
   submittedAt: string
-  /** Texto libre del pedido (plantilla rellenada por el usuario) */
+  /**
+   * Resumen legible generado a partir de los campos estructurados. Se conserva
+   * porque el CSV y el TXT anónimo lo usan, y porque los pedidos anteriores a
+   * este cambio solo tienen este campo.
+   */
   orderText: string
-}
-
-export type OrderInput = {
-  /** Texto libre del pedido (plantilla rellenada por el usuario) */
-  orderText: string
+  /** null en pedidos guardados antes del formulario estructurado. */
+  size: Size | null
+  /** null en pedidos guardados antes del formulario estructurado. */
+  version: KitType | null
+  printedName: string
+  number: string
+  patches: string
+  team: string
+  season: string
+  notes: string
+  photoUrl: string | null
 }
 
 /**
@@ -64,9 +97,21 @@ export type StoredIdentity = {
 /**
  * SEC-02 by construction: the export projection has no identity field and no
  * pairing field — it is impossible to leak the giver→recipient relation here.
+ *
+ * The structured fields were added for the PDF the vendor receives, and they
+ * describe the shirt only. `photoUrl` is a random UUID path in a public bucket.
  */
 export type ExportedOrder = {
   opaqueId: string
-  /** Texto libre del pedido (plantilla rellenada por el usuario) */
+  /** Resumen legible; único campo en pedidos anteriores al formulario. */
   orderText?: string
+  size?: Size | null
+  version?: KitType | null
+  printedName?: string
+  number?: string
+  patches?: string
+  team?: string
+  season?: string
+  notes?: string
+  photoUrl?: string | null
 }

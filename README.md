@@ -27,14 +27,16 @@ SecretKit permite a un grupo de amigos organizar un sorteo de amigo invisible do
 - Ve: quién ha rellenado preferencias, quién ha enviado pedido
 - Botón para iniciar sorteo (cuando quiera, si no está iniciado)
 - Al iniciar sorteo: reparto circular clásico (derangement), todos regalan y reciben una vez
-- Cuando todos hayan respondido (ej. 7/7): botón para descargar `.txt` con los pedidos **anónimos** (sin identificadores de quién mandó qué)
+- Cuando todos hayan respondido (ej. 7/7): botón para descargar el **PDF para el vendedor**, una página por camiseta con su foto y el formato `Size / Version / Name / Patches`
 
 ## Características
 
 - **Sorteo circular (derangement)**: Nadie se regala a sí mismo; todos regalan y son regalados exactamente una vez.
 - **Privacidad por diseño**: Cada participante solo ve su propio emparejamiento; el Admin ve solo la lista agregada de pedidos.
 - **Guía de tallas integrada**: Tablas de referencia Fan/Player/Retro con versión móvil responsive.
-- **Exportación ciega a CSV/TXT**: Formato compatible con Excel (BOM UTF-8, separador `;`, CRLF) que nunca filtra identidades.
+- **Pedido con foto**: talla, versión, nombre/dorsal, parches, equipo, temporada y una foto de la camiseta (archivo o enlace). La foto se reduce a 1400 px antes de subirla.
+- **PDF para el vendedor**: una página A4 por camiseta, con la foto y las líneas `Size`, `Version`, `Name`, `Patches`, más equipo, temporada, notas y precio de referencia.
+- **Exportación ciega a CSV/TXT**: el formato anterior se mantiene (BOM UTF-8, separador `;`, CRLF) y nunca filtra identidades.
 - **Tiempo real**: Sala de espera con lista de participantes actualizada en vivo vía Supabase Realtime.
 - **Sin device memory**: Solo usuario + PIN. Ninguna cuenta vinculada a dispositivo/navegador.
 - **Editable**: Con la sesión iniciada, cada participante puede corregir su talla, sus equipos y su pedido. El formulario de preferencias se rellena con lo ya guardado.
@@ -96,8 +98,9 @@ VITE_ADMIN_SECRET=your-secure-admin-secret-here
 
 1. Crea un proyecto en [Supabase](https://supabase.com)
 2. Ve al SQL Editor y ejecuta el contenido de `supabase-schema.sql`
-3. Habilita Realtime para las tablas `participants` y `event` (en Database > Replication)
-4. Copia la URL y la Anon Key a tu `.env.local`
+3. **Si el proyecto ya existía antes del PDF**: ejecuta también `supabase-migration-photos.sql` (añade las columnas del pedido estructurado y crea el bucket `jerseys`)
+4. Habilita Realtime para las tablas `participants` y `event` (en Database > Replication)
+5. Copia la URL y la Anon Key a tu `.env.local`
 
 ## Scripts disponibles
 
@@ -129,6 +132,7 @@ src/
 ├── components/       # Componentes UI reutilizables
 ├── domain/           # Lógica de negocio pura (sin Supabase)
 │   ├── exportOrders.ts    # Serializador CSV/TXT ciego
+│   ├── ordersPdf.ts       # Modelo de páginas del PDF del vendedor
 │   ├── derangement.ts     # Algoritmo sorteo circular
 │   ├── sizeGuide.ts       # Datos guía de tallas
 │   ├── pin.ts             # Hash/verificación PIN (PBKDF2)
@@ -137,6 +141,9 @@ src/
 │   └── types.ts           # Tipos compartidos
 ├── hooks/            # Custom React hooks
 ├── lib/              # Supabase client, utilidades, sesiones
+│   ├── image.ts           # Decodifica y reduce fotos en el navegador
+│   ├── photo.ts           # Sube la foto al bucket `jerseys`
+│   └── ordersPdf.ts       # Render del PDF con jsPDF (carga bajo demanda)
 ├── pages/            # Páginas de la app (rutas)
 ├── session/          # Proveedor de sesión (localStorage + PIN)
 ├── App.tsx           # Routing shell + guards
@@ -151,6 +158,14 @@ src/
 - Solo tú ves a quién regalas (assignment por `get` en `assignments/{tuNombreNormalizado}`).
 - Nadie ve el mapa completo (RLS: `assignments` sin `SELECT` policy para nadie excepto el giver).
 - La exportación Admin usa `opaqueId` (UUID aleatorio), sin nombres ni IDs de participante.
+- El PDF del vendedor solo contiene datos de la camiseta (talla, versión, nombre, parches, equipo, temporada, notas) y la foto. No lleva quién la pidió.
+
+### Fotos de las camisetas
+
+- Se guardan en el bucket público `jerseys` de Supabase Storage, con un nombre aleatorio (`UUID.jpg`), nunca el nombre del participante.
+- El bucket es público en lectura para que el PDF se pueda montar desde el navegador del Admin sin sesión de Supabase Auth.
+- La foto se reduce a 1400 px y se reencodea a JPEG en el navegador antes de subirla (máximo 8 MB de archivo original).
+- Un enlace externo se intenta copiar al bucket. Si el sitio bloquea la descarga (CORS), se guarda el enlace y el formulario avisa; en el PDF aparecerá un recuadro si finalmente no se puede cargar.
 
 ### Acceso del Admin (contraseña compartida)
 

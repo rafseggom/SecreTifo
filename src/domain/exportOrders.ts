@@ -18,7 +18,33 @@
  *
  * Pure module: no SDK import, no UI-framework import, no I/O.
  */
-import type { ExportedOrder } from './types'
+import type { ExportedOrder, OrderInput } from './types'
+
+/**
+ * The human-readable one-liner kept in `orders.order_text`.
+ *
+ * Structured data is the source of truth (the PDF reads the columns); this
+ * summary exists so the CSV and the anonymous TXT keep working and so orders
+ * created before the structured form still have something to print.
+ */
+export function buildOrderSummary(order: OrderInput): string {
+  const parts: string[] = [
+    order.version,
+    order.team.trim(),
+    order.season.trim(),
+    order.size,
+  ].filter((part) => part !== '')
+
+  const printed = [order.printedName.trim(), order.number.trim()]
+    .filter((part) => part !== '')
+    .join(' ')
+  if (printed) parts.push(printed)
+
+  parts.push(order.patches.trim() ? `Parches: ${order.patches.trim()}` : 'Sin parches')
+  if (order.notes.trim()) parts.push(order.notes.trim())
+
+  return parts.join(' · ')
+}
 
 export const EXPORT_HEADERS = [
   'ID de pedido',

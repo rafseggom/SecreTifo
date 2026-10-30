@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildOrdersExport, EXPORT_HEADERS, escapeCsvCell } from './exportOrders'
-import type { ExportedOrder } from './types'
+import { buildOrderSummary, buildOrdersExport, EXPORT_HEADERS, escapeCsvCell } from './exportOrders'
+import type { ExportedOrder, OrderInput } from './types'
 
 /**
  * D-20 / SEC-02: expectations are inline literals, never a committed .csv file —
@@ -65,5 +65,44 @@ describe('la exportación es ciega (SEC-02, ORDER-04, D-20)', () => {
     expect(csv).not.toContain('giverUid')
     expect(csv).not.toContain('recipientUid')
     expect(csv).not.toContain('Precio')
+  })
+})
+
+const structured: OrderInput = {
+  size: 'XXL',
+  version: 'Fan',
+  printedName: 'MOLTEN',
+  number: '5',
+  patches: 'FIFA WORLD CHAMPIONS 2026',
+  team: 'Real Madrid',
+  season: '25/26',
+  notes: '',
+  photoUrl: null,
+}
+
+describe('buildOrderSummary — resumen legible del pedido estructurado', () => {
+  it('compone una línea con versión, equipo, temporada, talla, nombre y parches', () => {
+    expect(buildOrderSummary(structured)).toBe(
+      'Fan · Real Madrid · 25/26 · XXL · MOLTEN 5 · Parches: FIFA WORLD CHAMPIONS 2026',
+    )
+  })
+
+  it('dice «Sin parches» y omite los campos vacíos', () => {
+    expect(
+      buildOrderSummary({
+        ...structured,
+        patches: '  ',
+        team: '',
+        season: '',
+        printedName: '',
+        number: '',
+      }),
+    ).toBe('Fan · XXL · Sin parches')
+  })
+
+  it('añade las notas al final cuando existen', () => {
+    expect(buildOrderSummary({ ...structured, notes: 'Manga corta' })).toContain(
+      ' · Manga corta',
+    )
   })
 })

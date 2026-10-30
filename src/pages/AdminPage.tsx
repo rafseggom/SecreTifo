@@ -34,7 +34,15 @@ import { ParticipantTableRow } from '../components/ParticipantTableRow'
 import { DrawConfirmDialog } from '../components/DrawConfirmDialog'
 import { useOrdersAdmin } from '../hooks/useOrdersAdmin'
 import { listOrdersAdmin, liberarParticipant, LIBERAR_ERRORS, type LiberarErrorCode } from '../lib/orders'
-import { downloadCsv, downloadText, ordersCsvFilename, giftsTxtFilename } from '../lib/download'
+import {
+  downloadBlob,
+  downloadCsv,
+  downloadText,
+  ordersCsvFilename,
+  ordersPdfFilename,
+  giftsTxtFilename,
+} from '../lib/download'
+import { buildOrdersPdf } from '../lib/ordersPdf'
 import { buildOrdersExport, buildGiftsTxtExport } from '../domain/exportOrders'
 import { errorCopy, downloadErrorCopy } from '../lib/errorCopy'
 import { clearAllSession } from '../lib/session'
@@ -55,6 +63,7 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
   const [downloading, setDownloading] = useState(false)
   const [downloadedName, setDownloadedName] = useState('')
   const [downloadError, setDownloadError] = useState('')
+  const [pdfWarning, setPdfWarning] = useState('')
 
   // Draw state
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -92,6 +101,7 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
     setDownloading(true)
     setDownloadedName('')
     setDownloadError('')
+    setPdfWarning('')
     try {
       const orders = await listOrdersAdmin()
       const filename = ordersCsvFilename()
@@ -108,11 +118,42 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
     }
   }
 
+  async function handleDownloadPdf() {
+    if (downloading) return
+    setDownloading(true)
+    setDownloadedName('')
+    setDownloadError('')
+    setPdfWarning('')
+    try {
+      const orders = await listOrdersAdmin()
+      const { blob, missingPhotos } = await buildOrdersPdf(orders)
+      const filename = ordersPdfFilename()
+      downloadBlob(filename, blob)
+      setDownloadedName(filename)
+      if (missingPhotos === 1) {
+        setPdfWarning('1 pedido no tiene foto disponible: en el PDF aparece un recuadro en blanco.')
+      } else if (missingPhotos > 1) {
+        setPdfWarning(
+          `${missingPhotos} pedidos no tienen foto disponible: en el PDF aparecen recuadros en blanco.`,
+        )
+      }
+    } catch (thrown) {
+      const code =
+        thrown instanceof Error && 'code' in thrown
+          ? String((thrown as { code: unknown }).code)
+          : 'unknown'
+      setDownloadError(code)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function handleDownloadGifts() {
     if (downloading) return
     setDownloading(true)
     setDownloadedName('')
     setDownloadError('')
+    setPdfWarning('')
     try {
       const orders = await listOrdersAdmin()
       const filename = giftsTxtFilename()
@@ -223,15 +264,26 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
       )}
 
       <div className="mt-6 flex flex-col gap-2">
-        {/* CSV for vendor - always available when there are orders */}
+        {/* PDF for the vendor - one page per jersey with its photo */}
         <Button
           type="button"
           variant="primary"
           loading={downloading}
           disabled={filled === 0}
+          onClick={handleDownloadPdf}
+        >
+          Descargar PDF para el vendedor
+        </Button>
+
+        {/* CSV for vendor - always available when there are orders */}
+        <Button
+          type="button"
+          variant="secondary"
+          loading={downloading}
+          disabled={filled === 0}
           onClick={handleDownload}
         >
-          Descargar Pedidos (CSV para vendedor)
+          Descargar Pedidos (CSV)
         </Button>
 
         {/* TXT gift list - available when there are orders */}
@@ -281,6 +333,8 @@ function AdminBody({ onRetry }: { onRetry: () => void }) {
         {downloadedName ? (
           <Notice tone="success">{`Archivo descargado: ${downloadedName}`}</Notice>
         ) : null}
+
+        {pdfWarning ? <Notice tone="warning">{pdfWarning}</Notice> : null}
 
         {downloadFailure ? (
           <Notice

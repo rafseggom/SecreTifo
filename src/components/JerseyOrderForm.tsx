@@ -114,7 +114,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [photoUrlInput, setPhotoUrlInput] = useState('')
   const [photoWarning, setPhotoWarning] = useState('')
 
   const formRef = useRef<HTMLFormElement>(null)
@@ -158,7 +157,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     }
     setPhotoFile(null)
     setPhotoPreview(null)
-    setPhotoUrlInput('')
     setFieldErrors({})
     setSubmitError('')
     setPhotoWarning('')
@@ -192,14 +190,12 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     }
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
-    setPhotoUrlInput('')
     setPhotoWarning('')
   }
 
   function clearPhoto() {
     setPhotoFile(null)
     setPhotoPreview(null)
-    setPhotoUrlInput('')
     setPhotoUrl(null)
     setPhotoWarning('')
   }
@@ -227,7 +223,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     setSubmitting(true)
 
     try {
-      const resolution = await resolveOrderPhoto(photoFile, photoUrlInput, photoUrl)
+      const resolution = await resolveOrderPhoto(photoFile, null, photoUrl)
       if (resolution.warning) setPhotoWarning(resolution.warning)
 
       const input: OrderInput = {
@@ -248,7 +244,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
       setPhotoUrl(order.photoUrl)
       setPhotoFile(null)
       setPhotoPreview(null)
-      setPhotoUrlInput('')
       setEditing(false)
     } catch (thrown) {
       if (thrown instanceof PhotoError) {
@@ -334,7 +329,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     )
   }
 
-  const preview = photoPreview ?? (photoUrlInput.trim() || photoUrl)
+  const preview = photoPreview || photoUrl
 
   return (
     <Card>
@@ -454,7 +449,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
 
         <Field
           label="Foto de la camiseta"
-          helper="Súbela tú o pega un enlace. Se recorta a 1400 px antes de guardarla."
+          helper="Súbela tomando una foto o eligiendo un archivo. Se recorta a 1400 px antes de guardarla."
         >
           {({ id, describedBy, invalid }) => (
             <div className="flex flex-col gap-3">
@@ -476,22 +471,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
                 className="w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
               />
 
-              <Input
-                aria-label="Enlace de la foto"
-                placeholder="O pega un enlace: https://…"
-                inputMode="url"
-                autoComplete="off"
-                value={photoUrlInput}
-                onChange={(event) => {
-                  setPhotoUrlInput(event.target.value)
-                  if (event.target.value.trim()) {
-                    setPhotoFile(null)
-                    setPhotoPreview(null)
-                  }
-                }}
-              />
-
-              {photoFile || photoUrl ? (
+              {photoFile ? (
                 <Button type="button" variant="ghost" onClick={clearPhoto} className="w-full">
                   Quitar foto
                 </Button>

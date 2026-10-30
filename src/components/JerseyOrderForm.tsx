@@ -454,7 +454,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
 
         <Field
           label="Foto de la camiseta"
-          helper="Súbela desde el móvil o pega un enlace. Se recorta a 1400 px antes de guardarla."
+          helper="Súbela tú o pega un enlace. Se recorta a 1400 px antes de guardarla."
         >
           {({ id, describedBy, invalid }) => (
             <div className="flex flex-col gap-3">

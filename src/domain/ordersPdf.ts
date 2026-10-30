@@ -15,7 +15,6 @@
  * Team, Season, Notes and Price follow below — the first four lines must not be
  * reordered or relabelled.
  */
-import { formatPrice } from './prices'
 import type { ExportedOrder } from './types'
 
 export type OrdersPdfLine = {
@@ -71,8 +70,6 @@ function buildLines(order: ExportedOrder): OrdersPdfLine[] {
 
   const notes = (order.notes ?? '').trim()
   if (notes) lines.push({ label: 'Notes', value: notes })
-
-  if (order.version) lines.push({ label: 'Price', value: formatPrice(order.version) })
 
   return lines
 }

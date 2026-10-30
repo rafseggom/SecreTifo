@@ -27,11 +27,10 @@ describe('buildOrdersPdfPages — el formato que pide el vendedor', () => {
     ])
   })
 
-  it('añade equipo, temporada y precio detrás de las cuatro líneas fijas', () => {
+  it('añade equipo y temporada detrás de las cuatro líneas fijas', () => {
     const [page] = buildOrdersPdfPages([structured])
     expect(page.lines).toContainEqual({ label: 'Team', value: 'Real Madrid' })
     expect(page.lines).toContainEqual({ label: 'Season', value: '25/26' })
-    expect(page.lines).toContainEqual({ label: 'Price', value: '11$' })
   })
 
   it('escribe «No patches» cuando el campo está vacío', () => {

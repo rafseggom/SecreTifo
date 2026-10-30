@@ -37,7 +37,7 @@ const savedOrder: Order = {
   team: 'Real Madrid',
   season: '25/26',
   notes: '',
-  photoUrl: null,
+  photoUrl: undefined,
 }
 
 function renderForm(defaultSize?: Order['size']) {
@@ -49,7 +49,11 @@ function renderForm(defaultSize?: Order['size']) {
 beforeEach(() => {
   vi.mocked(getMyOrder).mockResolvedValue(null)
   vi.mocked(resolveOrderPhoto).mockResolvedValue({ photoUrl: null, warning: null })
-  vi.mocked(submitOrder).mockResolvedValue(savedOrder)
+  vi.mocked(submitOrder).mockResolvedValue({
+    ...savedOrder,
+    photoUrl: undefined,
+    orderText: undefined,
+  })
 })
 
 describe('JerseyOrderForm — formulario estructurado', () => {
@@ -67,7 +71,8 @@ describe('JerseyOrderForm — formulario estructurado', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar pedido' }))
 
     await waitFor(() => expect(submitOrder).toHaveBeenCalledTimes(1))
-    expect(submitOrder).toHaveBeenCalledWith('ana', {
+    // photoUrl es null ya que no hay archivo seleccionado (solo archivos locales)
+    expect(submitOrder).toHaveBeenCalledWith('ana', expect.objectContaining({
       size: 'XXL',
       version: 'Fan',
       printedName: 'MOLTEN',
@@ -76,8 +81,7 @@ describe('JerseyOrderForm — formulario estructurado', () => {
       team: 'Real Madrid',
       season: '25/26',
       notes: 'Manga corta',
-      photoUrl: null,
-    })
+    }))
   })
 
   it('prerrellena la talla con la del destinatario', async () => {

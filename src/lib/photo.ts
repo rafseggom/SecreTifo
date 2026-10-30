@@ -2,17 +2,11 @@
  * Photo handling for the order form (quick task 261030).
  *
  * The vendor needs to SEE the shirt, so the order carries one reference photo.
- * Two entry points are accepted:
+ * Only a local file entry point is accepted:
  *
  *   - a local file, which is decoded, downscaled and re-encoded to JPEG in the
  *     browser before it is uploaded — a 6 MB phone photo becomes ~150 KB, which
- *     keeps both the bucket and the generated PDF small;
- *   - an external link, which is downloaded and mirrored into the same bucket so
- *     the PDF does not depend on a third-party host staying alive.
- *
- * If the browser cannot read the external image (CORS), the link is stored as-is
- * and the caller shows a warning: failing loudly here would block an otherwise
- * valid order.
+ *     keeps both the bucket and the generated PDF small.
  *
  * The object name is `crypto.randomUUID()`: it never contains the participant's
  * name, so a leaked bucket URL does not reveal who ordered what.
@@ -78,8 +72,8 @@ export type PhotoResolution = {
 /**
  * Resolves what the form currently holds into the single URL stored in the row.
  *
- * Precedence: a newly picked file wins over a link; a link currently stored with
- * the order is kept untouched; a new link is mirrored into the bucket.
+ * Precedence: a newly picked file wins over anything else; if no file is given,
+ * the current photo URL is kept untouched.
  */
 export async function resolveOrderPhoto(
   file: File | null,
@@ -93,24 +87,7 @@ export async function resolveOrderPhoto(
     return { photoUrl: await prepare(file), warning: null }
   }
 
-  const trimmed = url.trim()
-  if (!trimmed) return { photoUrl: currentUrl, warning: null }
-  if (!isHttpUrl(trimmed)) {
-    throw new PhotoError('El enlace de la foto no es válido. Debe empezar por http:// o https://.')
-  }
-  if (currentUrl && trimmed === currentUrl) return { photoUrl: currentUrl, warning: null }
-
-  try {
-    const response = await fetch(trimmed, { mode: 'cors' })
-    if (!response.ok) throw new Error(String(response.status))
-    const blob = await response.blob()
-    if (!blob.type.startsWith('image/')) throw new Error('not-an-image')
-    return { photoUrl: await prepare(blob), warning: null }
-  } catch {
-    return {
-      photoUrl: trimmed,
-      warning:
-        'No hemos podido copiar la imagen del enlace. Se guardará tal cual; si el PDF sale sin foto, descárgala y súbela como archivo.',
-    }
-  }
+  // No local file: keep the existing URL as-is (no external URL fetching)
+  if (!currentUrl) return { photoUrl: null, warning: null }
+  return { photoUrl: currentUrl, warning: null }
 }

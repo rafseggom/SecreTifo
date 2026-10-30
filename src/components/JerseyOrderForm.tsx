@@ -3,11 +3,8 @@
  *
  * The single free-text box was replaced by the four things the vendor actually
  * needs — size, version, printed name/number and patches — plus the shirt photo.
+ * The photo only accepts a local file; external URLs are not supported.
  * Every field maps to a column, so the PDF never has to parse prose.
- *
- * The photo accepts a local file or an external link. Both are normalised and
- * uploaded to Supabase Storage by `resolveOrderPhoto`; a link that cannot be
- * copied (CORS) is kept as-is with a warning instead of blocking the order.
  *
  * Legacy orders keep their free text visible and can be migrated by editing.
  */
@@ -113,7 +110,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
 
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [photoWarning, setPhotoWarning] = useState('')
 
   const formRef = useRef<HTMLFormElement>(null)
@@ -129,7 +125,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
       if (order) {
         setSaved(order)
         setValues(valuesFromOrder(order, defaultSize))
-        setPhotoUrl(order.photoUrl)
       }
       setLoading(false)
     })()
@@ -153,7 +148,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
   function startEditing() {
     if (saved) {
       setValues(valuesFromOrder(saved, defaultSize))
-      setPhotoUrl(saved.photoUrl)
     }
     setPhotoFile(null)
     setPhotoPreview(null)
@@ -173,7 +167,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     setFieldErrors({})
     if (saved) {
       setValues(valuesFromOrder(saved, defaultSize))
-      setPhotoUrl(saved.photoUrl)
     }
   }
 
@@ -196,7 +189,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
   function clearPhoto() {
     setPhotoFile(null)
     setPhotoPreview(null)
-    setPhotoUrl(null)
     setPhotoWarning('')
   }
 
@@ -329,7 +321,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     )
   }
 
-  const preview = photoPreview || photoUrl
+  const preview = photoPreview
 
   return (
     <Card>

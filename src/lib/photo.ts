@@ -77,7 +77,6 @@ export type PhotoResolution = {
  */
 export async function resolveOrderPhoto(
   file: File | null,
-  url: string,
   currentUrl: string | null,
 ): Promise<PhotoResolution> {
   if (file) {

@@ -161,7 +161,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     setEditing(false)
     setPhotoFile(null)
     setPhotoPreview(null)
-    setPhotoUrlInput('')
     setPhotoWarning('')
     setSubmitError('')
     setFieldErrors({})
@@ -215,7 +214,7 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
     setSubmitting(true)
 
     try {
-      const resolution = await resolveOrderPhoto(photoFile, null, photoUrl)
+      const resolution = await resolveOrderPhoto(photoFile, null)
       if (resolution.warning) setPhotoWarning(resolution.warning)
 
       const input: OrderInput = {
@@ -233,7 +232,6 @@ export function JerseyOrderForm({ giverNameNormalized, defaultSize }: JerseyOrde
       const order = await submitOrder(giverNameNormalized, input)
       setSaved(order)
       setValues(valuesFromOrder(order, defaultSize))
-      setPhotoUrl(order.photoUrl)
       setPhotoFile(null)
       setPhotoPreview(null)
       setEditing(false)
